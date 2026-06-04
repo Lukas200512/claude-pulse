@@ -71,6 +71,12 @@ const MODES = {
 };
 const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
 
+// The mode chip is shown only in these "actively working" states, where the
+// hook just wrote a fresh permission mode. It is hidden when idle/done: a mode
+// toggle while idle reaches neither the statusline JSON nor any hook, so an
+// idle value could be stale — better to show nothing than something wrong.
+const ACTIVE_KEYS = new Set(['thinking', 'shell', 'editing', 'reading', 'subagent', 'tool']);
+
 // A small colored chip with contrast-aware, always-crisp text.
 function chip(text, hex) {
   const [r, g, b] = brighten(hex);
@@ -100,10 +106,11 @@ function main() {
   if (cwd) dir = path.basename(cwd);
   const tail = [model, dir].filter(Boolean).join(' · ');
 
-  // Permission mode: prefer the live statusline field, fall back to the
-  // last value the hook persisted into state.
+  // Permission mode: prefer the live statusline field (absent in current CC),
+  // fall back to the last value the hook persisted into state. Only surfaced
+  // while actively working (see ACTIVE_KEYS) so it is never shown stale.
   const mode = (typeof sess.permission_mode === 'string' && sess.permission_mode) || st.mode || 'default';
-  const modeInfo = MODES[mode];
+  const modeInfo = ACTIVE_KEYS.has(st.key) ? MODES[mode] : null;
 
   // Coloured chips for compact/wide; plain bracketed text for the full bar
   // (a single-colour bar can't show separate chip backgrounds).

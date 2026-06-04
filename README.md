@@ -11,7 +11,7 @@ is independently toggleable.
 | Method | What you get |
 |---|---|
 | 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
-| 🟪 **Mode chip** | the active permission mode next to the badge: `PLAN` / `AUTO-EDIT` / `AUTO` / `NO-ASK` / `BYPASS`, plus `WARTET AUF OK` when an auto mode still needs your approval |
+| 🟪 **Mode chip** | the active permission mode next to the badge while Claude is working: `PLAN` / `AUTO-EDIT` / `AUTO` / `NO-ASK` / `BYPASS`, plus `WARTET AUF OK` when an auto mode hits a real permission prompt. (Shown only during activity — Claude Code gives the status line no way to read the mode when idle, so it is hidden then rather than risk showing a stale value.) |
 | 🏷️ **Window title** | the current activity in your tab/window title (`> Claude > Editing`) |
 | 🔔 **Notifications** | a ping when Claude is **done** or **needs your input** |
 

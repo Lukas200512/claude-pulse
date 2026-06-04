@@ -81,10 +81,12 @@ function resolveMode(event, payload, prev) {
                prev.mode || 'default';
   let needsApproval = false;
   if (event === 'notify' && AUTO_MODES.has(mode)) {
+    const ntype = typeof payload.notification_type === 'string' ? payload.notification_type : '';
     const msg = (typeof payload.message === 'string' ? payload.message : '').toLowerCase();
-    // Treat as an approval prompt when the message looks like one, or when the
-    // notification carries no message at all (older CC builds).
-    needsApproval = msg === '' || /permission|approv|erlaub|freigab/.test(msg);
+    // Only a real permission prompt counts — never idle/auth/other notifications.
+    // Newer CC exposes notification_type; older builds fall back to the message.
+    needsApproval = ntype ? ntype === 'permission_prompt'
+                          : /permission|approv|erlaub|freigab/.test(msg);
   }
   return { mode, needsApproval };
 }
