@@ -25,16 +25,19 @@ the install and stop.
 Run `node "$ROOT/scripts/doctor.js"` and give a one-line friendly summary
 (which channels work here; notifications depend on the terminal).
 
-### Step 2 — Choose features and theme
-Use **AskUserQuestion** with two questions:
-- **Features** (multi-select): *Statusline badge* (colored badge in the status
-  bar), *Window title* (shows the activity in the tab title), *Notifications*
-  (ping on done / needs-input). Default: all three.
+### Step 2 — Choose features, badge size and theme
+Use **AskUserQuestion**:
+- **Features** (multi-select): *Statusline badge* and *Notifications* (ping on
+  done / needs-input) — default both ON. *Window title* is **off by default**
+  (Claude Code overrides the title, so it rarely shows); offer it as an advanced
+  opt-in.
+- **Badge size** (single): *compact* / *wide* / *full* (full = the whole status
+  line becomes a colored bar). Default *wide*.
 - **Theme** (single): *dark-minimal* / *ocean* / *monokai*.
 
 ### Step 3 — Apply
 Write the config and the theme based on the answers. Set each `FEATURE_*` to `on`
-or `off` to match the feature selection:
+or `off` to match the selection, and `BADGE_STYLE` to the chosen size:
 
 ```bash
 mkdir -p ~/.claude/terminal-colors
@@ -44,6 +47,7 @@ FEATURE_TITLE=<on|off>
 FEATURE_NOTIFY=<on|off>
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
+BADGE_STYLE=<compact|wide|full>
 EOF
 cp "$ROOT/themes/<THEME>.conf" ~/.claude/terminal-colors/theme.conf
 ```

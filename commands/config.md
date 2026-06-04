@@ -15,16 +15,18 @@ if [ -z "$ROOT" ] || [ ! -f "$ROOT/hooks/indicator.js" ]; then
 fi
 ```
 
-**Show the current config**, then let the user pick what should be ON via
-**AskUserQuestion** (multi-select: *Statusline badge*, *Window title*,
-*Notifications*). The current state is in `~/.claude/terminal-colors/config.conf`
-(missing file = all on):
+**Show the current config**, then via **AskUserQuestion** let the user pick which
+features should be ON (multi-select: *Statusline badge*, *Window title*,
+*Notifications*) and the **badge size** (*compact* / *wide* / *full*). The current
+state is in `~/.claude/terminal-colors/config.conf` (missing file = statusline +
+notifications on, title off, badge wide):
 
 ```bash
-cat ~/.claude/terminal-colors/config.conf 2>/dev/null || echo "(no config yet — all features on by default)"
+cat ~/.claude/terminal-colors/config.conf 2>/dev/null || echo "(no config yet — defaults: statusline+notify on, title off, badge wide)"
 ```
 
-**Write the new config** (set each `FEATURE_*` to `on`/`off` from the selection):
+**Write the new config** (set each `FEATURE_*` to `on`/`off` and `BADGE_STYLE`
+from the selection):
 
 ```bash
 mkdir -p ~/.claude/terminal-colors
@@ -34,6 +36,7 @@ FEATURE_TITLE=<on|off>
 FEATURE_NOTIFY=<on|off>
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
+BADGE_STYLE=<compact|wide|full>
 EOF
 ```
 

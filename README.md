@@ -70,11 +70,16 @@ Settings live in `~/.claude/terminal-colors/config.conf`:
 
 ```
 FEATURE_STATUSLINE=on
-FEATURE_TITLE=on
+FEATURE_TITLE=off       # off by default — Claude Code overrides the title
 FEATURE_NOTIFY=on
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
+BADGE_STYLE=wide        # compact | wide | full (full = whole status line)
 ```
+
+`BADGE_STYLE` controls how prominent the badge is — `compact` is a small badge,
+`wide` a larger colored block, `full` turns the entire status line into a colored
+bar in the current state's color.
 
 ## Themes
 
@@ -113,7 +118,9 @@ itself, in color), the window title, and notifications.
   existing one is backed up to `settings.json.bak`) and appears after a restart.
   **Before uninstalling the plugin**, run `/claude-terminal-colors:config` and
   turn the statusline off, so no dangling entry is left behind.
-- **Window title** may alternate with Claude Code's own title — that's expected.
+- **Window title** is **off by default**: Claude Code sets its own window title
+  and overwrites ours, so it rarely shows. Enable it via `/…:config` if your
+  setup happens to keep it.
 - **Notifications** (OSC 9) are terminal-dependent: known to work in Windows
   Terminal, iTerm2, WezTerm, ConEmu, Ghostty. Other terminals may ignore them.
 

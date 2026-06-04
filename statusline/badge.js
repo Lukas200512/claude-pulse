@@ -4,6 +4,7 @@
  * Reads the state written by indicator.js and prints a colored
  * badge for Claude Code's status line. Cross-platform; uses
  * 24-bit ANSI which Claude Code renders itself (no /dev/tty).
+ * Style is configurable: compact | wide | full.
  * https://github.com/Lukas200512/claude-terminal-colors
  * ========================================================== */
 'use strict';
@@ -11,7 +12,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const STATE_FILE = path.join(os.homedir(), '.claude', 'terminal-colors', 'state');
+const DIR = path.join(os.homedir(), '.claude', 'terminal-colors');
+const STATE_FILE = path.join(DIR, 'state');
+const CONFIG_FILE = path.join(DIR, 'config.conf');
 
 function readState() {
   try {
@@ -25,8 +28,16 @@ function readSession() {
   try { return JSON.parse(fs.readFileSync(0, 'utf8')) || {}; } catch { return {}; }
 }
 
-// Brighten a dark theme color so it's visible as a small badge,
-// preserving hue (scale up until the brightest channel is ~170).
+function readStyle() {
+  try {
+    const t = fs.readFileSync(CONFIG_FILE, 'utf8');
+    const m = t.match(/^\s*BADGE_STYLE\s*=\s*"?(compact|wide|full)"?/m);
+    if (m) return m[1];
+  } catch { /* default below */ }
+  return 'wide';
+}
+
+// Brighten a dark theme color so it reads as a small badge, preserving hue.
 function brighten(hex) {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
   let r = 80, g = 90, b = 110;
@@ -40,22 +51,39 @@ function brighten(hex) {
   return [Math.min(255, Math.round(r * k)), Math.min(255, Math.round(g * k)), Math.min(255, Math.round(b * k))];
 }
 
+function termWidth(sess) {
+  const w = sess.width || sess.cols || (sess.terminal && sess.terminal.width) ||
+            parseInt(process.env.COLUMNS || '', 10);
+  return Number.isFinite(w) && w > 20 ? w : 80;
+}
+
 function main() {
   const st = readState();
   const sess = readSession();
+  const style = readStyle();
   const [r, g, b] = brighten(st.color);
+  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[30m\x1b[1m${text}\x1b[0m`;
+  const dim = (text) => `\x1b[2m${text}\x1b[0m`;
 
-  // black text on the brightened color for contrast
-  const badge = `\x1b[48;2;${r};${g};${b}m\x1b[30m\x1b[1m ${st.icon} ${st.label.toUpperCase()} \x1b[0m`;
-
-  // optional context tail (model · dir), best-effort from session JSON
+  const label = st.label.toUpperCase();
   const model = (sess.model && (sess.model.display_name || sess.model.id)) || '';
   let dir = '';
   const cwd = (sess.workspace && (sess.workspace.current_dir || sess.workspace.cwd)) || sess.cwd || '';
   if (cwd) dir = path.basename(cwd);
   const tail = [model, dir].filter(Boolean).join(' · ');
 
-  process.stdout.write(tail ? `${badge}  \x1b[2m${tail}\x1b[0m` : badge);
+  let out;
+  if (style === 'compact') {
+    out = onColor(` ${st.icon} ${label} `) + (tail ? '  ' + dim(tail) : '');
+  } else if (style === 'full') {
+    let inner = ` ${st.icon} ${label}` + (tail ? `  ·  ${tail} ` : ' ');
+    const w = termWidth(sess);
+    if (inner.length < w) inner += ' '.repeat(w - inner.length);
+    out = onColor(inner);
+  } else { // wide (default)
+    out = onColor(`    ${st.icon}  ${label}    `) + (tail ? '  ' + dim(tail) : '');
+  }
+  process.stdout.write(out);
 }
 
 try { main(); } catch { process.stdout.write(''); }

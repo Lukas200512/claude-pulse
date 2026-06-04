@@ -113,7 +113,7 @@ function main() {
   // Each is a full OSC sequence: ESC ] <n> ; <text> BEL.
   const ESC = '\x1b', BEL = '\x07';
   let seq = '';
-  if (on('FEATURE_TITLE')) {
+  if (on('FEATURE_TITLE', false)) { // default off: Claude Code overrides the title
     seq += ESC + ']2;' + state.icon + ' Claude > ' + state.label + BEL;
   }
   if (on('FEATURE_NOTIFY')) {
