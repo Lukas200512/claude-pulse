@@ -4,6 +4,10 @@ See what [Claude Code](https://claude.ai/code) is doing at a glance — through 
 **colored statusline badge**, your **window title**, and **notifications**. Each
 is independently toggleable.
 
+<p align="center">
+  <img src="assets/demo.svg" alt="Claude Pulse badge cycling through THINKING, SHELL, EDITING, READING, SUBAGENT, DONE" width="720">
+</p>
+
 | Method | What you get |
 |---|---|
 | 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
