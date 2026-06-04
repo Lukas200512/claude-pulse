@@ -58,8 +58,8 @@ cp "$ROOT/themes/<THEME>.conf" ~/.claude/claude-pulse/theme.conf
 Then register or remove the statusline to match the choice:
 
 ```bash
-# if the Statusline badge feature is ON:
-node "$ROOT/scripts/register-statusline.js" on "$ROOT/statusline/badge.js"
+# if the Statusline badge feature is ON (registers a version-robust launcher):
+node "$ROOT/scripts/register-statusline.js" on "$ROOT"
 # if it is OFF:
 node "$ROOT/scripts/register-statusline.js" off
 ```

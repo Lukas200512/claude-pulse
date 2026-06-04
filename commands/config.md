@@ -46,8 +46,8 @@ EOF
 **Sync the statusline registration** to the Statusline-badge choice:
 
 ```bash
-# if Statusline badge is now ON:
-node "$ROOT/scripts/register-statusline.js" on "$ROOT/statusline/badge.js"
+# if Statusline badge is now ON (registers a version-robust launcher):
+node "$ROOT/scripts/register-statusline.js" on "$ROOT"
 # if it is now OFF:
 node "$ROOT/scripts/register-statusline.js" off
 ```
