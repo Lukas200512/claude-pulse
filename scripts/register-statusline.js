@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
- * Claude Terminal Colors — register/unregister the statusline
+ * Claude Pulse — register/unregister the statusline
  * in ~/.claude/settings.json (cross-platform, no jq).
  *   node register-statusline.js on  "<abs path to badge.js>"
  *   node register-statusline.js off
@@ -20,7 +20,7 @@ function load() {
 }
 function isOurs(sl) {
   const c = sl && (typeof sl === 'string' ? sl : sl.command) || '';
-  return /terminal-colors|badge\.js/.test(c);
+  return /claude-pulse|badge\.js/.test(c);
 }
 
 const settings = load();

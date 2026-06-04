@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
- * Claude Terminal Colors — environment doctor (read-only)
+ * Claude Pulse — environment doctor (read-only)
  * Cross-platform (Node). Prints "key: value" lines and a final
  * VERDICT about which indicator channels will work here.
  * ========================================================== */

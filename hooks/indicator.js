@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /* ============================================================
- * Claude Terminal Colors — activity indicator hook
+ * Claude Pulse — activity indicator hook
  * Cross-platform (Node, no /dev/tty, no bash). For each event it:
  *   1. writes the current state to a file (for the statusline badge)
  *   2. returns a `terminalSequence` (window title + notification)
  * Channels used are the ones Claude Code allows from a hook:
  * OSC 2 (title) and OSC 9 (notification). Background color (OSC 11)
  * is rejected by Claude Code, so it is not attempted.
- * https://github.com/Lukas200512/claude-terminal-colors
+ * https://github.com/Lukas200512/claude-pulse
  * ========================================================== */
 'use strict';
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DIR = path.join(os.homedir(), '.claude', 'terminal-colors');
+const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
 const STATE_FILE = path.join(DIR, 'state');
 const CONFIG_FILE = path.join(DIR, 'config.conf');
 
@@ -45,7 +45,7 @@ const COLORS = new Set([
 ]);
 function loadTheme() {
   const cands = [
-    process.env.CLAUDE_TERMINAL_THEME,
+    process.env.CLAUDE_PULSE_THEME,
     path.join(DIR, 'theme.conf'),
     path.join(os.homedir(), '.claude', 'hooks', 'theme.conf'),
   ].filter(Boolean);

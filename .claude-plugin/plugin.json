@@ -1,14 +1,14 @@
 {
-  "name": "claude-terminal-colors",
-  "displayName": "Claude Terminal Colors",
+  "name": "claude-pulse",
+  "displayName": "Claude Pulse",
   "version": "2.0.0",
   "description": "See what Claude Code is doing at a glance — a colored statusline badge, the activity in your window title, and notifications on done / needs-input.",
   "author": {
     "name": "Lukas200512",
     "url": "https://github.com/Lukas200512"
   },
-  "homepage": "https://github.com/Lukas200512/claude-terminal-colors",
-  "repository": "https://github.com/Lukas200512/claude-terminal-colors",
+  "homepage": "https://github.com/Lukas200512/claude-pulse",
+  "repository": "https://github.com/Lukas200512/claude-pulse",
   "license": "MIT",
   "keywords": ["terminal", "statusline", "notifications", "title", "hooks", "activity", "theme"]
 }

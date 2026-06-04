@@ -1,16 +1,16 @@
 ---
-description: Turn Claude Terminal Colors features on or off (statusline, title, notifications)
+description: Turn Claude Pulse features on or off (statusline, title, notifications)
 allowed-tools: Bash, AskUserQuestion
 ---
 
-You are toggling **claude-terminal-colors** features. Concise, one round.
+You are toggling **claude-pulse** features. Concise, one round.
 
 **Locate the plugin directory:**
 
 ```bash
 ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 if [ -z "$ROOT" ] || [ ! -f "$ROOT/hooks/indicator.js" ]; then
-  hit=$(find "$HOME/.claude/plugins" -path '*claude-terminal-colors*/hooks/indicator.js' 2>/dev/null | head -n1)
+  hit=$(find "$HOME/.claude/plugins" -path '*claude-pulse*/hooks/indicator.js' 2>/dev/null | head -n1)
   [ -n "$hit" ] && ROOT=$(dirname "$(dirname "$hit")")
 fi
 ```
@@ -18,19 +18,19 @@ fi
 **Show the current config**, then via **AskUserQuestion** let the user pick which
 features should be ON (multi-select: *Statusline badge*, *Window title*,
 *Notifications*) and the **badge size** (*compact* / *wide* / *full*). The current
-state is in `~/.claude/terminal-colors/config.conf` (missing file = statusline +
+state is in `~/.claude/claude-pulse/config.conf` (missing file = statusline +
 notifications on, title off, badge wide):
 
 ```bash
-cat ~/.claude/terminal-colors/config.conf 2>/dev/null || echo "(no config yet — defaults: statusline+notify on, title off, badge wide)"
+cat ~/.claude/claude-pulse/config.conf 2>/dev/null || echo "(no config yet — defaults: statusline+notify on, title off, badge wide)"
 ```
 
 **Write the new config** (set each `FEATURE_*` to `on`/`off` and `BADGE_STYLE`
 from the selection):
 
 ```bash
-mkdir -p ~/.claude/terminal-colors
-cat > ~/.claude/terminal-colors/config.conf <<EOF
+mkdir -p ~/.claude/claude-pulse
+cat > ~/.claude/claude-pulse/config.conf <<EOF
 FEATURE_STATUSLINE=<on|off>
 FEATURE_TITLE=<on|off>
 FEATURE_NOTIFY=<on|off>

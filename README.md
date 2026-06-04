@@ -1,4 +1,4 @@
-# Claude Terminal Colors
+# Claude Pulse
 
 See what [Claude Code](https://claude.ai/code) is doing at a glance — through a
 **colored statusline badge**, your **window title**, and **notifications**. Each
@@ -23,23 +23,34 @@ Works on Linux, macOS, WSL, SSH, and **native Windows** — it never writes to
 This is a Claude Code **plugin** — no scripts, no manual install:
 
 ```text
-/plugin marketplace add Lukas200512/claude-terminal-colors
-/plugin install claude-terminal-colors@claude-terminal-colors
+/plugin marketplace add Lukas200512/claude-pulse
+/plugin install claude-pulse@claude-pulse
 ```
 
 Then run the wizard to pick your features and theme:
 
 ```text
-/claude-terminal-colors:setup
+/claude-pulse:setup
 ```
 
 Restart Claude Code afterwards so the statusline badge appears. Enable or disable
 the whole thing anytime from `/plugin`:
 
 ```text
-/plugin disable claude-terminal-colors@claude-terminal-colors
-/plugin enable  claude-terminal-colors@claude-terminal-colors
+/plugin disable claude-pulse@claude-pulse
+/plugin enable  claude-pulse@claude-pulse
 ```
+
+## Stay up to date
+
+By default, third-party marketplaces don't auto-update, so you'd otherwise have to
+pull new versions by hand. To get updates automatically, **enable auto-update for
+this marketplace once**: open `/plugin`, select the `claude-pulse` marketplace, and
+turn on auto-update. After that, Claude Code refreshes and updates the plugin **on
+startup** — no manual command, no guessing whether you're on the latest version.
+
+(Without it, you'd update manually with `/plugin marketplace update claude-pulse`
+followed by reinstalling — which is exactly what auto-update saves you from.)
 
 ## States
 
@@ -63,10 +74,10 @@ Theme colors are brightened for the small badge so they stay readable.
 Turn individual features on or off anytime:
 
 ```text
-/claude-terminal-colors:config
+/claude-pulse:config
 ```
 
-Settings live in `~/.claude/terminal-colors/config.conf`:
+Settings live in `~/.claude/claude-pulse/config.conf`:
 
 ```
 FEATURE_STATUSLINE=on
@@ -86,12 +97,12 @@ bar in the current state's color.
 `dark-minimal` (default), `ocean`, `monokai`. Switch in-session:
 
 ```text
-/claude-terminal-colors:theme ocean
+/claude-pulse:theme ocean
 ```
 
-…or drop a custom theme at `~/.claude/terminal-colors/theme.conf` (only
+…or drop a custom theme at `~/.claude/claude-pulse/theme.conf` (only
 `COLOR_*="#rrggbb"` lines are read — the file is parsed, never executed).
-Resolution order: `$CLAUDE_TERMINAL_THEME` → `~/.claude/terminal-colors/theme.conf`
+Resolution order: `$CLAUDE_PULSE_THEME` → `~/.claude/claude-pulse/theme.conf`
 → built-in defaults.
 
 ## Why not background colors?
@@ -116,7 +127,7 @@ itself, in color), the window title, and notifications.
 
 - **Statusline** is registered in `~/.claude/settings.json` by `/setup` (your
   existing one is backed up to `settings.json.bak`) and appears after a restart.
-  **Before uninstalling the plugin**, run `/claude-terminal-colors:config` and
+  **Before uninstalling the plugin**, run `/claude-pulse:config` and
   turn the statusline off, so no dangling entry is left behind.
 - **Window title** is **off by default**: Claude Code sets its own window title
   and overwrites ours, so it rarely shows. Enable it via `/…:config` if your

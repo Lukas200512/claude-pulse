@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /* ============================================================
- * Claude Terminal Colors — statusline badge
+ * Claude Pulse — statusline badge
  * Reads the state written by indicator.js and prints a colored
  * badge for Claude Code's status line. Cross-platform; uses
  * 24-bit ANSI which Claude Code renders itself (no /dev/tty).
  * Style is configurable: compact | wide | full.
- * https://github.com/Lukas200512/claude-terminal-colors
+ * https://github.com/Lukas200512/claude-pulse
  * ========================================================== */
 'use strict';
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DIR = path.join(os.homedir(), '.claude', 'terminal-colors');
+const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
 const STATE_FILE = path.join(DIR, 'state');
 const CONFIG_FILE = path.join(DIR, 'config.conf');
 
