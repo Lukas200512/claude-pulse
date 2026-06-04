@@ -12,6 +12,7 @@ is independently toggleable.
 |---|---|
 | 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
 | 🟪 **Mode chip** | the active permission mode next to the badge while Claude is working: `PLAN` / `AUTO-EDIT` / `AUTO` / `NO-ASK` / `BYPASS`, plus `WARTET AUF OK` when an auto mode hits a real permission prompt. (Shown only during activity — Claude Code gives the status line no way to read the mode when idle, so it is hidden then rather than risk showing a stale value.) |
+| ⚙️ **Subagent counter** | `⚙ N` while N subagents are running — disappears when none are |
 | 🏷️ **Window title** | the current activity in your tab/window title (`> Claude > Editing`) |
 | 🔔 **Notifications** | a ping when Claude is **done** or **needs your input** |
 
@@ -89,6 +90,7 @@ FEATURE_STATUSLINE=on
 FEATURE_TITLE=off       # off by default — Claude Code overrides the title
 FEATURE_NOTIFY=on
 FEATURE_MODE=on         # permission-mode chip + "WARTET AUF OK" on auto modes
+FEATURE_SUBAGENTS=on    # "⚙ N" while N subagents are running
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
 BADGE_STYLE=wide        # compact | wide | full (full = whole status line)

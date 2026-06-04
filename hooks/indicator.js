@@ -17,6 +17,7 @@ const path = require('path');
 const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
 const STATE_FILE = path.join(DIR, 'state');
 const CONFIG_FILE = path.join(DIR, 'config.conf');
+const SUBAGENTS_DIR = path.join(DIR, 'subagents'); // one marker file per running subagent
 
 // ---- tiny safe parsers (never execute the files) ------------
 function readKV(file, allowed, validate) {
@@ -33,7 +34,7 @@ function readKV(file, allowed, validate) {
 }
 
 const FLAGS = new Set([
-  'FEATURE_STATUSLINE', 'FEATURE_TITLE', 'FEATURE_NOTIFY', 'FEATURE_MODE',
+  'FEATURE_STATUSLINE', 'FEATURE_TITLE', 'FEATURE_NOTIFY', 'FEATURE_MODE', 'FEATURE_SUBAGENTS',
   'NOTIFY_DONE', 'NOTIFY_INPUT',
 ]);
 const cfg = readKV(CONFIG_FILE, FLAGS, v => v === 'on' || v === 'off');
@@ -91,6 +92,33 @@ function resolveMode(event, payload, prev) {
   return { mode, needsApproval };
 }
 
+// ---- running-subagent counter (one marker file per subagent) ----
+// Race-free: each subagent owns a distinct file keyed by agent_id, so parallel
+// starts/stops never collide on a shared counter. The badge counts the files.
+function markerName(id) {
+  const s = String(id || '').replace(/[^A-Za-z0-9._-]/g, '');
+  return s || ('a' + process.pid + '-' + Date.now()); // fallback when agent_id is absent
+}
+function addSubagent(id) {
+  try {
+    fs.mkdirSync(SUBAGENTS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(SUBAGENTS_DIR, markerName(id)), '');
+  } catch { /* never fail a hook */ }
+}
+function removeSubagent(id) {
+  try {
+    if (id) { fs.unlinkSync(path.join(SUBAGENTS_DIR, markerName(id))); return; }
+    // no agent_id (older CC): drop the oldest marker as a best-effort decrement
+    const files = fs.readdirSync(SUBAGENTS_DIR)
+      .map(f => ({ f, t: fs.statSync(path.join(SUBAGENTS_DIR, f)).mtimeMs }))
+      .sort((a, b) => a.t - b.t);
+    if (files.length) fs.unlinkSync(path.join(SUBAGENTS_DIR, files[0].f));
+  } catch { /* marker already gone / dir missing */ }
+}
+function clearSubagents() {
+  try { for (const f of fs.readdirSync(SUBAGENTS_DIR)) fs.unlinkSync(path.join(SUBAGENTS_DIR, f)); } catch { /* none */ }
+}
+
 // ---- derive the current state -------------------------------
 function deriveState(event, toolName, theme) {
   switch (event) {
@@ -119,6 +147,23 @@ function deriveState(event, toolName, theme) {
 function main() {
   const event = process.argv[2] || 'pre';
   const payload = readStdin();
+
+  // Subagent counter events: manage marker files only, never touch the badge
+  // state or emit a notification.
+  if (event === 'subagent-start' || event === 'subagent-stop') {
+    if (on('FEATURE_SUBAGENTS')) {
+      if (event === 'subagent-start') addSubagent(payload.agent_id);
+      else removeSubagent(payload.agent_id);
+    }
+    process.stdout.write(JSON.stringify({ suppressOutput: true }));
+    return;
+  }
+  // Reset the counter at turn/session boundaries — clears any orphaned markers
+  // if a SubagentStop was ever missed.
+  if (on('FEATURE_SUBAGENTS') && (event === 'stop' || event === 'start' || event === 'end')) {
+    clearSubagents();
+  }
+
   const toolName = payload && typeof payload.tool_name === 'string' ? payload.tool_name : '';
   const theme = loadTheme();
   const state = deriveState(event, toolName, theme);

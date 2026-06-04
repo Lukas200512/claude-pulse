@@ -42,6 +42,20 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" notify" }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" subagent-start" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" subagent-stop" }
+        ]
+      }
     ]
   }
 }

@@ -28,9 +28,10 @@ Run `node "$ROOT/scripts/doctor.js"` and give a one-line friendly summary
 ### Step 2 — Choose features, badge size and theme
 Use **AskUserQuestion**:
 - **Features** (multi-select): *Statusline badge*, *Notifications* (ping on
-  done / needs-input) and *Mode chip* — default all three ON. *Mode chip* shows
-  the active permission mode (PLAN / AUTO-EDIT / AUTO / NO-ASK / BYPASS) next to
-  the badge, plus a "WARTET AUF OK" chip when an auto mode still needs approval.
+  done / needs-input), *Mode chip* and *Subagent counter* — default all ON.
+  *Mode chip* shows the active permission mode (PLAN / AUTO-EDIT / AUTO / NO-ASK /
+  BYPASS) next to the badge, plus a "WARTET AUF OK" chip when an auto mode still
+  needs approval. *Subagent counter* shows `⚙ N` while N subagents are running.
   *Window title* is **off by default** (Claude Code overrides the title, so it
   rarely shows); offer it as an advanced opt-in.
 - **Badge size** (single): *compact* / *wide* / *full* (full = the whole status
@@ -48,6 +49,7 @@ FEATURE_STATUSLINE=<on|off>
 FEATURE_TITLE=<on|off>
 FEATURE_NOTIFY=<on|off>
 FEATURE_MODE=<on|off>
+FEATURE_SUBAGENTS=<on|off>
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
 BADGE_STYLE=<compact|wide|full>

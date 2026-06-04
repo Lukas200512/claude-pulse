@@ -15,6 +15,12 @@ const path = require('path');
 const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
 const STATE_FILE = path.join(DIR, 'state');
 const CONFIG_FILE = path.join(DIR, 'config.conf');
+const SUBAGENTS_DIR = path.join(DIR, 'subagents');
+
+// Number of subagents currently running = marker files written by the hook.
+function subagentCount() {
+  try { return fs.readdirSync(SUBAGENTS_DIR).length; } catch { return 0; }
+}
 
 function readState() {
   try {
@@ -70,6 +76,7 @@ const MODES = {
   bypassPermissions: { label: 'BYPASS',    color: '#c01818' },
 };
 const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
+const SUBAGENT_COLOR = '#c83ab0'; // magenta — N subagents currently running
 
 // The mode chip is shown only in these "actively working" states, where the
 // hook just wrote a fresh permission mode. It is hidden when idle/done: a mode
@@ -117,6 +124,8 @@ function main() {
   let chips = '', inlineChips = '';
   if (modeInfo) { chips += '  ' + chip(modeInfo.label, modeInfo.color); inlineChips += `  [ ${modeInfo.label} ]`; }
   if (st.needsApproval) { chips += '  ' + chip('WARTET AUF OK', APPROVAL_COLOR); inlineChips += '  [ WARTET AUF OK ]'; }
+  const agents = subagentCount(); // independent of activity — shown whenever subagents run
+  if (agents > 0) { chips += '  ' + chip(`⚙ ${agents}`, SUBAGENT_COLOR); inlineChips += `  [ ⚙ ${agents} ]`; }
 
   let out;
   if (style === 'compact') {
