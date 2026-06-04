@@ -11,6 +11,7 @@ is independently toggleable.
 | Method | What you get |
 |---|---|
 | 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
+| 🟪 **Mode chip** | the active permission mode next to the badge: `PLAN` / `AUTO-EDIT` / `AUTO` / `NO-ASK` / `BYPASS`, plus `WARTET AUF OK` when an auto mode still needs your approval |
 | 🏷️ **Window title** | the current activity in your tab/window title (`> Claude > Editing`) |
 | 🔔 **Notifications** | a ping when Claude is **done** or **needs your input** |
 
@@ -87,6 +88,7 @@ Settings live in `~/.claude/claude-pulse/config.conf`:
 FEATURE_STATUSLINE=on
 FEATURE_TITLE=off       # off by default — Claude Code overrides the title
 FEATURE_NOTIFY=on
+FEATURE_MODE=on         # permission-mode chip + "WARTET AUF OK" on auto modes
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
 BADGE_STYLE=wide        # compact | wide | full (full = whole status line)

@@ -33,7 +33,7 @@ function readKV(file, allowed, validate) {
 }
 
 const FLAGS = new Set([
-  'FEATURE_STATUSLINE', 'FEATURE_TITLE', 'FEATURE_NOTIFY',
+  'FEATURE_STATUSLINE', 'FEATURE_TITLE', 'FEATURE_NOTIFY', 'FEATURE_MODE',
   'NOTIFY_DONE', 'NOTIFY_INPUT',
 ]);
 const cfg = readKV(CONFIG_FILE, FLAGS, v => v === 'on' || v === 'off');
@@ -67,6 +67,28 @@ function readStdin() {
   try { return JSON.parse(fs.readFileSync(0, 'utf8')); } catch { return {}; }
 }
 
+// ---- previous state (to carry the last-known permission mode) ----
+function readPrevState() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) || {}; } catch { return {}; }
+}
+
+const AUTO_MODES = new Set(['acceptEdits', 'auto', 'bypassPermissions', 'dontAsk']);
+
+// Resolve the permission mode + the "auto on but this needs approval" flag.
+// permission_mode isn't on every event, so we persist the last value seen.
+function resolveMode(event, payload, prev) {
+  const mode = (typeof payload.permission_mode === 'string' && payload.permission_mode) ||
+               prev.mode || 'default';
+  let needsApproval = false;
+  if (event === 'notify' && AUTO_MODES.has(mode)) {
+    const msg = (typeof payload.message === 'string' ? payload.message : '').toLowerCase();
+    // Treat as an approval prompt when the message looks like one, or when the
+    // notification carries no message at all (older CC builds).
+    needsApproval = msg === '' || /permission|approv|erlaub|freigab/.test(msg);
+  }
+  return { mode, needsApproval };
+}
+
 // ---- derive the current state -------------------------------
 function deriveState(event, toolName, theme) {
   switch (event) {
@@ -98,6 +120,13 @@ function main() {
   const toolName = payload && typeof payload.tool_name === 'string' ? payload.tool_name : '';
   const theme = loadTheme();
   const state = deriveState(event, toolName, theme);
+
+  // attach permission mode + approval flag (gated by FEATURE_MODE, default on)
+  if (on('FEATURE_MODE')) {
+    const { mode, needsApproval } = resolveMode(event, payload, readPrevState());
+    state.mode = mode;
+    if (needsApproval) state.needsApproval = true;
+  }
 
   // 1) state file for the statusline badge
   if (on('FEATURE_STATUSLINE')) {

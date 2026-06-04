@@ -38,6 +38,7 @@ function readStyle() {
 }
 
 // Brighten a dark theme color so it reads as a small badge, preserving hue.
+// Target is high enough that the label always pops as a vivid chip.
 function brighten(hex) {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
   let r = 80, g = 90, b = 110;
@@ -47,8 +48,33 @@ function brighten(hex) {
     b = parseInt(m[1].slice(4, 6), 16);
   }
   const max = Math.max(r, g, b, 1);
-  const k = max < 170 ? 170 / max : 1;
+  const target = 210;
+  const k = max < target ? target / max : 1;
   return [Math.min(255, Math.round(r * k)), Math.min(255, Math.round(g * k)), Math.min(255, Math.round(b * k))];
+}
+
+// Pick black or white text for maximum contrast on the badge background,
+// so the label stays crisp on any hue (white on orange, black on green, ...).
+function fgCode([r, g, b]) {
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b; // perceived, 0..255
+  return lum > 140 ? 30 : 97; // 30 = black, 97 = bright white
+}
+
+// Permission modes → short label + fixed vivid colour (theme-independent so
+// they stay legible on any theme). 'default' is intentionally absent: no chip.
+const MODES = {
+  plan:              { label: 'PLAN',      color: '#4a3aff' },
+  acceptEdits:       { label: 'AUTO-EDIT', color: '#1f8f3a' },
+  auto:              { label: 'AUTO',      color: '#00a0a0' },
+  dontAsk:           { label: 'NO-ASK',    color: '#c08000' },
+  bypassPermissions: { label: 'BYPASS',    color: '#c01818' },
+};
+const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
+
+// A small colored chip with contrast-aware, always-crisp text.
+function chip(text, hex) {
+  const [r, g, b] = brighten(hex);
+  return `\x1b[48;2;${r};${g};${b}m\x1b[${fgCode([r, g, b])}m\x1b[1m ${text} \x1b[0m`;
 }
 
 function termWidth(sess) {
@@ -62,8 +88,10 @@ function main() {
   const sess = readSession();
   const style = readStyle();
   const [r, g, b] = brighten(st.color);
-  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[30m\x1b[1m${text}\x1b[0m`;
-  const dim = (text) => `\x1b[2m${text}\x1b[0m`;
+  const fg = fgCode([r, g, b]);
+  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[${fg}m\x1b[1m${text}\x1b[0m`;
+  // Readable mid-grey for the secondary tail; raw ANSI dim renders too faint on some terminals.
+  const dim = (text) => `\x1b[38;5;250m${text}\x1b[0m`;
 
   const label = st.label.toUpperCase();
   const model = (sess.model && (sess.model.display_name || sess.model.id)) || '';
@@ -72,16 +100,27 @@ function main() {
   if (cwd) dir = path.basename(cwd);
   const tail = [model, dir].filter(Boolean).join(' · ');
 
+  // Permission mode: prefer the live statusline field, fall back to the
+  // last value the hook persisted into state.
+  const mode = (typeof sess.permission_mode === 'string' && sess.permission_mode) || st.mode || 'default';
+  const modeInfo = MODES[mode];
+
+  // Coloured chips for compact/wide; plain bracketed text for the full bar
+  // (a single-colour bar can't show separate chip backgrounds).
+  let chips = '', inlineChips = '';
+  if (modeInfo) { chips += '  ' + chip(modeInfo.label, modeInfo.color); inlineChips += `  [ ${modeInfo.label} ]`; }
+  if (st.needsApproval) { chips += '  ' + chip('WARTET AUF OK', APPROVAL_COLOR); inlineChips += '  [ WARTET AUF OK ]'; }
+
   let out;
   if (style === 'compact') {
-    out = onColor(` ${st.icon} ${label} `) + (tail ? '  ' + dim(tail) : '');
+    out = onColor(` ${st.icon} ${label} `) + chips + (tail ? '  ' + dim(tail) : '');
   } else if (style === 'full') {
-    let inner = ` ${st.icon} ${label}` + (tail ? `  ·  ${tail} ` : ' ');
+    let inner = ` ${st.icon} ${label}` + inlineChips + (tail ? `  ·  ${tail} ` : ' ');
     const w = termWidth(sess);
     if (inner.length < w) inner += ' '.repeat(w - inner.length);
     out = onColor(inner);
   } else { // wide (default)
-    out = onColor(`    ${st.icon}  ${label}    `) + (tail ? '  ' + dim(tail) : '');
+    out = onColor(`    ${st.icon}  ${label}    `) + chips + (tail ? '  ' + dim(tail) : '');
   }
   process.stdout.write(out);
 }
