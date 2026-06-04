@@ -60,6 +60,21 @@ Inside **tmux** or **screen** the color sequence is wrapped in a passthrough so 
 tmux set -g allow-passthrough on
 ```
 
+## Platform support
+
+The background color is set by writing an [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands) sequence to the terminal. That works wherever the hook can reach a real terminal device, which is **where Claude Code runs**, not necessarily where you sit:
+
+| Where Claude Code runs | Background colors |
+|---|---|
+| Linux | ✅ |
+| macOS (in an OSC 11 terminal — iTerm2, Kitty, WezTerm, …) | ✅ |
+| Windows via **WSL** | ✅ |
+| **SSH** into a Linux/macOS host (e.g. from Windows Terminal) | ✅ — the sequence travels over SSH and colors your local terminal |
+| **Native Windows** (Claude Code in PowerShell, no WSL) | ❌ — see below |
+| macOS Terminal.app | ❌ — no OSC 11 support |
+
+**Why native Windows can't do background colors.** On native Windows there is no `/dev/tty`, and Claude Code's only sanctioned cross-platform channel for a hook to emit escape sequences (the `terminalSequence` hook field) **allowlists titles, notifications, and the bell — but explicitly rejects color sequences like OSC 11**. So no plugin can repaint the background from a hook there. If you're on Windows, run Claude Code inside **WSL** or over **SSH** and it works fully. (The terminal renders fine either way — it's the hook-side write that's blocked on native Windows.)
+
 ## Themes
 
 `dark-minimal` (default), `ocean`, `monokai`.
