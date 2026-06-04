@@ -43,6 +43,43 @@ function readStyle() {
   return 'wide';
 }
 
+// Read FEATURE_* flags from config (default on when absent).
+function readFlags() {
+  const f = {};
+  try {
+    const t = fs.readFileSync(CONFIG_FILE, 'utf8');
+    for (const m of t.matchAll(/^\s*(FEATURE_[A-Z]+)\s*=\s*"?(on|off)"?/gm)) f[m[1]] = m[2];
+  } catch { /* defaults */ }
+  return f;
+}
+const flagOn = (f, k) => (f[k] ? f[k] === 'on' : true);
+
+const TURN_START_FILE = path.join(DIR, 'turn-start');
+// Human duration since the turn started (file written by the hook on prompt).
+function turnDuration() {
+  try {
+    const ts = parseInt(fs.readFileSync(TURN_START_FILE, 'utf8'), 10);
+    if (!Number.isFinite(ts)) return null;
+    let s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm' + (s % 60) + 's';
+    return Math.floor(s / 3600) + 'h' + Math.floor((s % 3600) / 60) + 'm';
+  } catch { return null; }
+}
+
+// Context-window gauge: a 7-cell bar. barString() is plain (for the full bar);
+// contextGauge() colours it green/amber/red by fill.
+function barString(pct) {
+  const cells = 7, filled = Math.max(0, Math.min(cells, Math.round(pct / 100 * cells)));
+  return '▓'.repeat(filled) + '░'.repeat(cells - filled);
+}
+function contextGauge(pct, exceeds) {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const hex = (p >= 90 || exceeds) ? '#e04040' : p >= 70 ? '#e0a020' : '#3ad27a';
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `\x1b[38;2;${r};${g};${b}m\x1b[1m${barString(p)} ${p}%\x1b[0m`;
+}
+
 // Brighten a dark theme color so it reads as a small badge, preserving hue.
 // Target is high enough that the label always pops as a vivid chip.
 function brighten(hex) {
@@ -77,6 +114,8 @@ const MODES = {
 };
 const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
 const SUBAGENT_COLOR = '#c83ab0'; // magenta — N subagents currently running
+const EFFORT = { low: 'LOW', medium: 'MED', high: 'HIGH', xhigh: 'XHIGH', max: 'MAX' };
+const EFFORT_COLOR = '#5a6cf0'; // indigo — reasoning effort level
 
 // The mode chip is shown only in these "actively working" states, where the
 // hook just wrote a fresh permission mode. It is hidden when idle/done: a mode
@@ -106,18 +145,29 @@ function main() {
   // Readable mid-grey for the secondary tail; raw ANSI dim renders too faint on some terminals.
   const dim = (text) => `\x1b[38;5;250m${text}\x1b[0m`;
 
+  const flags = readFlags();
   const label = st.label.toUpperCase();
   const model = (sess.model && (sess.model.display_name || sess.model.id)) || '';
   let dir = '';
   const cwd = (sess.workspace && (sess.workspace.current_dir || sess.workspace.cwd)) || sess.cwd || '';
   if (cwd) dir = path.basename(cwd);
-  const tail = [model, dir].filter(Boolean).join(' · ');
 
   // Permission mode: prefer the live statusline field (absent in current CC),
   // fall back to the last value the hook persisted into state. Only surfaced
   // while actively working (see ACTIVE_KEYS) so it is never shown stale.
   const mode = (typeof sess.permission_mode === 'string' && sess.permission_mode) || st.mode || 'default';
   const modeInfo = ACTIVE_KEYS.has(st.key) ? MODES[mode] : null;
+
+  // Reasoning effort (effort.level), context-window gauge, turn duration.
+  const effLevel = sess.effort && typeof sess.effort.level === 'string' ? sess.effort.level : '';
+  const effLabel = flagOn(flags, 'FEATURE_EFFORT') ? EFFORT[effLevel] : null;
+  const cw = sess.context_window || {};
+  let pct = typeof cw.used_percentage === 'number' ? cw.used_percentage : null;
+  if (pct == null && typeof cw.current_usage === 'number' && cw.context_window_size > 0) {
+    pct = cw.current_usage / cw.context_window_size * 100; // fallback if used_percentage is absent
+  }
+  const showGauge = flagOn(flags, 'FEATURE_CONTEXT') && pct != null;
+  const dur = flagOn(flags, 'FEATURE_DURATION') ? turnDuration() : null;
 
   // Coloured chips for compact/wide; plain bracketed text for the full bar
   // (a single-colour bar can't show separate chip backgrounds).
@@ -126,17 +176,23 @@ function main() {
   if (st.needsApproval) { chips += '  ' + chip('WARTET AUF OK', APPROVAL_COLOR); inlineChips += '  [ WARTET AUF OK ]'; }
   const agents = subagentCount(); // independent of activity — shown whenever subagents run
   if (agents > 0) { chips += '  ' + chip(`⚙ ${agents}`, SUBAGENT_COLOR); inlineChips += `  [ ⚙ ${agents} ]`; }
+  if (effLabel) { chips += '  ' + chip(effLabel, EFFORT_COLOR); inlineChips += `  [ ${effLabel} ]`; }
+
+  // Tail: context gauge (coloured) then the grey duration · model · dir.
+  const gaugeWide = showGauge ? '  ' + contextGauge(pct, sess.exceeds_200k_tokens) : '';
+  const gaugeInline = showGauge ? `  ${barString(Math.round(pct))} ${Math.round(pct)}%` : '';
+  const greyTail = [dur ? `⏱ ${dur}` : '', model, dir].filter(Boolean).join(' · ');
 
   let out;
   if (style === 'compact') {
-    out = onColor(` ${st.icon} ${label} `) + chips + (tail ? '  ' + dim(tail) : '');
+    out = onColor(` ${st.icon} ${label} `) + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
   } else if (style === 'full') {
-    let inner = ` ${st.icon} ${label}` + inlineChips + (tail ? `  ·  ${tail} ` : ' ');
+    let inner = ` ${st.icon} ${label}` + inlineChips + gaugeInline + (greyTail ? `  ·  ${greyTail} ` : ' ');
     const w = termWidth(sess);
     if (inner.length < w) inner += ' '.repeat(w - inner.length);
     out = onColor(inner);
   } else { // wide (default)
-    out = onColor(`    ${st.icon}  ${label}    `) + chips + (tail ? '  ' + dim(tail) : '');
+    out = onColor(`    ${st.icon}  ${label}    `) + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
   }
   process.stdout.write(out);
 }

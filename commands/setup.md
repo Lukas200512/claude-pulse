@@ -28,12 +28,15 @@ Run `node "$ROOT/scripts/doctor.js"` and give a one-line friendly summary
 ### Step 2 — Choose features, badge size and theme
 Use **AskUserQuestion**:
 - **Features** (multi-select): *Statusline badge*, *Notifications* (ping on
-  done / needs-input), *Mode chip* and *Subagent counter* — default all ON.
-  *Mode chip* shows the active permission mode (PLAN / AUTO-EDIT / AUTO / NO-ASK /
-  BYPASS) next to the badge, plus a "WARTET AUF OK" chip when an auto mode still
-  needs approval. *Subagent counter* shows `⚙ N` while N subagents are running.
-  *Window title* is **off by default** (Claude Code overrides the title, so it
-  rarely shows); offer it as an advanced opt-in.
+  done / needs-input), *Mode chip*, *Subagent counter*, *Context gauge*, *Effort
+  chip* and *Duration* — default all ON. *Mode chip* shows the active permission
+  mode (PLAN / AUTO-EDIT / AUTO / NO-ASK / BYPASS) plus a "WARTET AUF OK" chip
+  when an auto mode still needs approval. *Subagent counter* shows `⚙ N` while N
+  subagents run. *Context gauge* shows a colored context-window usage bar.
+  *Effort chip* shows the reasoning effort (LOW/MED/HIGH/XHIGH/MAX). *Duration*
+  shows `⏱` elapsed since the turn started. *Window title* is **off by default**
+  (Claude Code overrides the title, so it rarely shows); offer it as an advanced
+  opt-in.
 - **Badge size** (single): *compact* / *wide* / *full* (full = the whole status
   line becomes a colored bar). Default *wide*.
 - **Theme** (single): *dark-minimal* / *ocean* / *monokai*.
@@ -50,6 +53,9 @@ FEATURE_TITLE=<on|off>
 FEATURE_NOTIFY=<on|off>
 FEATURE_MODE=<on|off>
 FEATURE_SUBAGENTS=<on|off>
+FEATURE_CONTEXT=<on|off>
+FEATURE_EFFORT=<on|off>
+FEATURE_DURATION=<on|off>
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
 BADGE_STYLE=<compact|wide|full>

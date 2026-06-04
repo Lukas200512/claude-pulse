@@ -18,6 +18,7 @@ const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
 const STATE_FILE = path.join(DIR, 'state');
 const CONFIG_FILE = path.join(DIR, 'config.conf');
 const SUBAGENTS_DIR = path.join(DIR, 'subagents'); // one marker file per running subagent
+const TURN_START_FILE = path.join(DIR, 'turn-start'); // epoch-ms stamp for the duration display
 
 // ---- tiny safe parsers (never execute the files) ------------
 function readKV(file, allowed, validate) {
@@ -35,6 +36,7 @@ function readKV(file, allowed, validate) {
 
 const FLAGS = new Set([
   'FEATURE_STATUSLINE', 'FEATURE_TITLE', 'FEATURE_NOTIFY', 'FEATURE_MODE', 'FEATURE_SUBAGENTS',
+  'FEATURE_CONTEXT', 'FEATURE_EFFORT', 'FEATURE_DURATION',
   'NOTIFY_DONE', 'NOTIFY_INPUT',
 ]);
 const cfg = readKV(CONFIG_FILE, FLAGS, v => v === 'on' || v === 'off');
@@ -162,6 +164,13 @@ function main() {
   // if a SubagentStop was ever missed.
   if (on('FEATURE_SUBAGENTS') && (event === 'stop' || event === 'start' || event === 'end')) {
     clearSubagents();
+  }
+  // Turn timer: stamp the start on prompt submit, clear it when the turn ends.
+  if (on('FEATURE_DURATION')) {
+    try {
+      if (event === 'prompt') { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(TURN_START_FILE, String(Date.now())); }
+      else if (event === 'stop' || event === 'end') { fs.unlinkSync(TURN_START_FILE); }
+    } catch { /* never fail a hook */ }
   }
 
   const toolName = payload && typeof payload.tool_name === 'string' ? payload.tool_name : '';
