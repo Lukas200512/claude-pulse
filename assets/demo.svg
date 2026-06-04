@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="64" viewBox="0 0 720 64" role="img" aria-label="Claude Pulse statusline badge cycling through states">
+  <rect width="720" height="64" rx="8" fill="#1e1e2e"/>
+  <text x="252" y="37" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="14" fill="#8b8b9e">·  Claude Pulse  ·  opus  ·  ~/my-project</text>
+  
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#4979aa"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">*  THINKING</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.0000;0.0000;0.1667;0.1667;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#aa4100"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">>  SHELL</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1667;0.1667;0.3333;0.3333;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#2537aa"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">~  EDITING</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.3333;0.3333;0.5000;0.5000;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#5237aa"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">?  READING</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.5000;0.5000;0.6667;0.6667;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#00aaaa"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">@  SUBAGENT</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.6667;0.6667;0.8333;0.8333;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+  <g opacity="0">
+    <rect x="24" y="16" width="210" height="32" rx="6" fill="#41aa41"/>
+    <text x="129" y="37" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" font-weight="700" fill="#10131a">v  DONE</text>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.8333;0.8333;1.0000;1.0000;1" dur="7.2s" repeatCount="indefinite"/>
+  </g>
+</svg>
