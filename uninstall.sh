@@ -23,10 +23,12 @@ if [ -f "$SETTINGS_FILE" ]; then
           def isOurs: (.hooks // []) | map(.command // "") | join(" ") | test("color\\.sh|033\\]11");
           def clean: map(select(isOurs | not));
           if .hooks then
-            .hooks.PreToolUse   |= ((. // []) | clean)
-            | .hooks.PostToolUse  |= ((. // []) | clean)
-            | .hooks.Stop         |= ((. // []) | clean)
-            | .hooks.Notification |= ((. // []) | clean)
+            .hooks.PreToolUse       |= ((. // []) | clean)
+            | .hooks.PostToolUse      |= ((. // []) | clean)
+            | .hooks.UserPromptSubmit |= ((. // []) | clean)
+            | .hooks.SessionStart     |= ((. // []) | clean)
+            | .hooks.Stop             |= ((. // []) | clean)
+            | .hooks.Notification     |= ((. // []) | clean)
             | .hooks |= with_entries(select(.value | length > 0))
             | if (.hooks | length) == 0 then del(.hooks) else . end
           else . end
@@ -38,7 +40,14 @@ if [ -f "$SETTINGS_FILE" ]; then
     fi
 fi
 
-# Reset terminal background
-printf '\033]11;#000000\007' > /dev/tty 2>/dev/null || true
+# Reset the terminal background to its own default (OSC 111), multiplexer-aware.
+reset_seq=$'\033]111\007'
+if [ -n "$TMUX" ]; then
+    reset_seq="${reset_seq//$'\033'/$'\033\033'}"
+    reset_seq=$'\033Ptmux;'"$reset_seq"$'\033\\'
+elif [ -n "$STY" ] && [ "${TERM%%[-.]*}" = "screen" ]; then
+    reset_seq=$'\033P'"$reset_seq"$'\033\\'
+fi
+printf '%s' "$reset_seq" > /dev/tty 2>/dev/null || true
 
 echo "Done."

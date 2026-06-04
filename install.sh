@@ -69,7 +69,13 @@ for t in "${THEMES[@]}"; do
     i=$((i + 1))
 done
 echo ""
-read -p "Theme [1-${#THEMES[@]}]: " THEME_CHOICE
+# Read from the controlling terminal, not stdin: when installed via
+# `curl … | bash` stdin is the pipe (immediate EOF), but /dev/tty is still the
+# user's terminal. Empty/no-tty input falls through to the default below.
+THEME_CHOICE=""
+if [ -r /dev/tty ]; then
+    read -p "Theme [1-${#THEMES[@]}]: " THEME_CHOICE < /dev/tty || THEME_CHOICE=""
+fi
 
 # Default to first theme on empty / invalid input.
 if [[ "$THEME_CHOICE" =~ ^[0-9]+$ ]] && [ "$THEME_CHOICE" -ge 1 ] && [ "$THEME_CHOICE" -le "${#THEMES[@]}" ]; then
@@ -96,11 +102,14 @@ done
 # Set selected theme
 cp "$THEME_DIR/${THEME}.conf" "$HOOK_DIR/theme.conf"
 
-# Hook configuration we want present. Stop/Notify go through color.sh so
-# theme swaps update *every* state (older versions hard-coded those colors).
+# Hook configuration we want present. Every state goes through color.sh so a
+# theme swap updates *all* of them (older versions hard-coded some colors).
+# Tool colour persists until the next change, so there is no PostToolUse hook;
+# UserPromptSubmit shows the "thinking" colour and SessionStart resets.
 HOOKS_JSON='{
   "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh pre"}]}],
-  "PostToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh post"}]}],
+  "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh prompt"}]}],
+  "SessionStart": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh start"}]}],
   "Stop": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh stop"}]}],
   "Notification": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh notify"}]}]
 }'
@@ -109,16 +118,21 @@ if [ -f "$SETTINGS_FILE" ]; then
     echo -e "${YELLOW}Existing settings.json found. Backing up to ${SETTINGS_FILE}.bak${NC}"
     cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
 
-    # Idempotent merge: strip any old color hooks (matched by `color.sh` or
-    # the legacy hard-coded OSC 11 strings), then append the canonical set.
+    # Idempotent merge: strip any old color hooks (matched by `color.sh` or the
+    # legacy hard-coded OSC 11 strings) from every category — including the now
+    # removed PostToolUse — then append the canonical set. Empty categories
+    # (e.g. PostToolUse after cleaning) are dropped.
     jq --argjson hooks "$HOOKS_JSON" '
       def isOurs: (.hooks // []) | map(.command // "") | join(" ") | test("color\\.sh|033\\]11");
       def clean: map(select(isOurs | not));
       .hooks //= {}
-      | .hooks.PreToolUse    = (((.hooks.PreToolUse    // []) | clean) + $hooks.PreToolUse)
-      | .hooks.PostToolUse   = (((.hooks.PostToolUse   // []) | clean) + $hooks.PostToolUse)
-      | .hooks.Stop          = (((.hooks.Stop          // []) | clean) + $hooks.Stop)
-      | .hooks.Notification  = (((.hooks.Notification  // []) | clean) + $hooks.Notification)
+      | .hooks.PostToolUse     = (((.hooks.PostToolUse     // []) | clean))
+      | .hooks.PreToolUse      = (((.hooks.PreToolUse      // []) | clean) + $hooks.PreToolUse)
+      | .hooks.UserPromptSubmit = (((.hooks.UserPromptSubmit // []) | clean) + $hooks.UserPromptSubmit)
+      | .hooks.SessionStart    = (((.hooks.SessionStart    // []) | clean) + $hooks.SessionStart)
+      | .hooks.Stop            = (((.hooks.Stop            // []) | clean) + $hooks.Stop)
+      | .hooks.Notification    = (((.hooks.Notification    // []) | clean) + $hooks.Notification)
+      | .hooks |= with_entries(select(.value | length > 0))
     ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
       && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
 
@@ -138,13 +152,22 @@ else
         ]
       }
     ],
-    "PostToolUse": [
+    "UserPromptSubmit": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/color.sh post"
+            "command": "bash ~/.claude/hooks/color.sh prompt"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/color.sh start"
           }
         ]
       }

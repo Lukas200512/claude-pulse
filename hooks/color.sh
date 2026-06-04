@@ -11,9 +11,15 @@ HOOK_TYPE="$1"
 # Load user theme or fall back to defaults
 THEME_FILE="${CLAUDE_TERMINAL_THEME:-$HOME/.claude/hooks/theme.conf}"
 
+# Parse the theme file safely. We deliberately do NOT `source` it — a theme
+# is plain config, not code, so we only accept `COLOR_<NAME>="#rrggbb"` lines
+# and ignore everything else (comments, blank lines, anything malformed).
 if [ -f "$THEME_FILE" ]; then
-  # shellcheck disable=SC1090
-  source "$THEME_FILE"
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ "$line" =~ ^[[:space:]]*(COLOR_[A-Z]+)=\"?(#[0-9a-fA-F]{6})\"? ]]; then
+      printf -v "${BASH_REMATCH[1]}" '%s' "${BASH_REMATCH[2]}"
+    fi
+  done < "$THEME_FILE"
 fi
 
 # Default colors (dark minimal theme)
@@ -27,11 +33,43 @@ COLOR_DONE="${COLOR_DONE:-#0a1a0a}"
 COLOR_NOTIFY="${COLOR_NOTIFY:-#2a1a00}"
 COLOR_TOOL="${COLOR_TOOL:-#15151f}"
 
+# Write an escape sequence to the controlling terminal. Inside a multiplexer
+# the sequence has to be wrapped in a DCS passthrough or it never reaches the
+# outer terminal:
+#   - tmux  : ESC P tmux ; <payload, every ESC doubled> ESC \
+#             (requires `set -g allow-passthrough on`, tmux >= 3.3)
+#   - screen: ESC P <payload> ESC \
+emit() {
+  local seq="$1"
+  if [ -n "$TMUX" ]; then
+    seq="${seq//$'\033'/$'\033\033'}"
+    seq=$'\033Ptmux;'"$seq"$'\033\\'
+  elif [ -n "$STY" ] && [ "${TERM%%[-.]*}" = "screen" ]; then
+    seq=$'\033P'"$seq"$'\033\\'
+  fi
+  printf '%s' "$seq" > /dev/tty 2>/dev/null || true
+}
+
+# Per-session dedup state. Each write to /dev/tty can yank the terminal out of
+# scrollback (most emulators "scroll on output"), so we skip no-op repeats.
+STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+STATE_FILE="$STATE_DIR/.claude-terminal-color-$PPID"
+
+# SessionStart: reset the background to the terminal's own default (OSC 111)
+# so a previous session's color doesn't linger, and clear the dedup state.
+if [ "$HOOK_TYPE" = "start" ]; then
+  emit $'\033]111\007'
+  rm -f "$STATE_FILE" 2>/dev/null || true
+  exit 0
+fi
+
 case "$HOOK_TYPE" in
   stop)   COLOR="$COLOR_DONE"   ;;
   notify) COLOR="$COLOR_NOTIFY" ;;
-  post)   COLOR="$COLOR_IDLE"   ;;
+  prompt) COLOR="$COLOR_IDLE"   ;;   # prompt submitted — Claude is thinking
   pre|*)
+    # PreToolUse: set the tool's color. It persists until the next change
+    # (prompt / next tool / stop), so there is no per-tool flicker.
     TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
     case "$TOOL" in
       Bash)                              COLOR="$COLOR_BASH"  ;;
@@ -44,15 +82,10 @@ case "$HOOK_TYPE" in
     ;;
 esac
 
-# Dedupe consecutive same-color writes. Each write to /dev/tty can
-# yank the terminal out of scrollback (most emulators "scroll on output"),
-# so skipping no-op writes makes long sessions far more usable.
-STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
-STATE_FILE="$STATE_DIR/.claude-terminal-color-$PPID"
 LAST_COLOR=""
 [ -f "$STATE_FILE" ] && LAST_COLOR=$(cat "$STATE_FILE" 2>/dev/null)
 
 if [ "$COLOR" != "$LAST_COLOR" ]; then
-  printf '\033]11;%s\007' "$COLOR" > /dev/tty 2>/dev/null || true
+  emit "$(printf '\033]11;%s\007' "$COLOR")"
   printf '%s' "$COLOR" > "$STATE_FILE" 2>/dev/null || true
 fi
