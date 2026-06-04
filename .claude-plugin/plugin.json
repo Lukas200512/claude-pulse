@@ -10,6 +10,5 @@
   "homepage": "https://github.com/Lukas200512/claude-terminal-colors",
   "repository": "https://github.com/Lukas200512/claude-terminal-colors",
   "license": "MIT",
-  "keywords": ["terminal", "colors", "hooks", "osc11", "background", "theme"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["terminal", "colors", "hooks", "osc11", "background", "theme"]
 }
