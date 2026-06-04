@@ -64,9 +64,10 @@ emit() {
 STATE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
 STATE_FILE="$STATE_DIR/.claude-terminal-color-$PPID"
 
-# SessionStart: reset the background to the terminal's own default (OSC 111)
-# so a previous session's color doesn't linger, and clear the dedup state.
-if [ "$HOOK_TYPE" = "start" ]; then
+# SessionStart / SessionEnd: reset the background to the terminal's own default
+# (OSC 111) so a colour never lingers between sessions, and clear the dedup
+# state. SessionEnd means quitting Claude Code leaves your terminal as it was.
+if [ "$HOOK_TYPE" = "start" ] || [ "$HOOK_TYPE" = "end" ]; then
   emit $'\033]111\007'
   rm -f "$STATE_FILE" 2>/dev/null || true
   exit 0
@@ -79,7 +80,15 @@ case "$HOOK_TYPE" in
   pre|*)
     # PreToolUse: set the tool's color. It persists until the next change
     # (prompt / next tool / stop), so there is no per-tool flicker.
-    TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+    TOOL=""
+    if command -v jq >/dev/null 2>&1; then
+      TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+    fi
+    # Fallback when jq isn't installed: pull tool_name out with bash alone, so
+    # the plugin works with zero external dependencies.
+    if [ -z "$TOOL" ] && [[ "$INPUT" =~ \"tool_name\"[[:space:]]*:[[:space:]]*\"([A-Za-z0-9_]+)\" ]]; then
+      TOOL="${BASH_REMATCH[1]}"
+    fi
     case "$TOOL" in
       Bash)                              COLOR="$COLOR_BASH"  ;;
       Edit|Write|MultiEdit|NotebookEdit) COLOR="$COLOR_CODE"  ;;

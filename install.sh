@@ -110,6 +110,7 @@ HOOKS_JSON='{
   "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh pre"}]}],
   "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh prompt"}]}],
   "SessionStart": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh start"}]}],
+  "SessionEnd": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh end"}]}],
   "Stop": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh stop"}]}],
   "Notification": [{"hooks": [{"type": "command", "command": "bash ~/.claude/hooks/color.sh notify"}]}]
 }'
@@ -130,6 +131,7 @@ if [ -f "$SETTINGS_FILE" ]; then
       | .hooks.PreToolUse      = (((.hooks.PreToolUse      // []) | clean) + $hooks.PreToolUse)
       | .hooks.UserPromptSubmit = (((.hooks.UserPromptSubmit // []) | clean) + $hooks.UserPromptSubmit)
       | .hooks.SessionStart    = (((.hooks.SessionStart    // []) | clean) + $hooks.SessionStart)
+      | .hooks.SessionEnd      = (((.hooks.SessionEnd      // []) | clean) + $hooks.SessionEnd)
       | .hooks.Stop            = (((.hooks.Stop            // []) | clean) + $hooks.Stop)
       | .hooks.Notification    = (((.hooks.Notification    // []) | clean) + $hooks.Notification)
       | .hooks |= with_entries(select(.value | length > 0))
@@ -168,6 +170,16 @@ else
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/color.sh start"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/color.sh end"
           }
         ]
       }

@@ -27,6 +27,7 @@ if [ -f "$SETTINGS_FILE" ]; then
             | .hooks.PostToolUse      |= ((. // []) | clean)
             | .hooks.UserPromptSubmit |= ((. // []) | clean)
             | .hooks.SessionStart     |= ((. // []) | clean)
+            | .hooks.SessionEnd       |= ((. // []) | clean)
             | .hooks.Stop             |= ((. // []) | clean)
             | .hooks.Notification     |= ((. // []) | clean)
             | .hooks |= with_entries(select(.value | length > 0))

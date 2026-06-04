@@ -16,6 +16,8 @@ Implemented as Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-cod
 | Notification | Warm orange |
 | Other tool | Slate |
 
+A tool's color stays until the next state change, so the background doesn't flicker. Starting or quitting Claude Code resets the terminal to its own default, so no color lingers between sessions.
+
 ## Install as a Claude Code plugin (recommended)
 
 No scripts, no editing `settings.json` — install once and toggle it from `/plugin`:
@@ -50,7 +52,7 @@ curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/
 
 …or just point Claude Code at this repo and ask it to install — it'll clone, copy the hook, set up `~/.claude/settings.json`, and pick a theme with you.
 
-Requires `jq`. Works in iTerm2, Kitty, Alacritty, WezTerm, GNOME Terminal, Konsole, Windows Terminal, Hyper, Tabby, foot, Termux. **Not** macOS Terminal.app (no OSC 11 support).
+The standalone installer needs `jq` (to merge into `settings.json`); the hook itself does not — it falls back to plain bash, so the plugin runs with no external dependencies. Works in iTerm2, Kitty, Alacritty, WezTerm, GNOME Terminal, Konsole, Windows Terminal, Hyper, Tabby, foot, Termux. **Not** macOS Terminal.app (no OSC 11 support).
 
 Inside **tmux** or **screen** the color sequence is wrapped in a passthrough so it reaches the outer terminal. tmux additionally needs passthrough enabled (tmux ≥ 3.3):
 
