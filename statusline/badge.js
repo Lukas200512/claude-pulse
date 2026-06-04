@@ -38,6 +38,7 @@ function readStyle() {
 }
 
 // Brighten a dark theme color so it reads as a small badge, preserving hue.
+// Target is high enough that the label always pops as a vivid chip.
 function brighten(hex) {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
   let r = 80, g = 90, b = 110;
@@ -47,8 +48,16 @@ function brighten(hex) {
     b = parseInt(m[1].slice(4, 6), 16);
   }
   const max = Math.max(r, g, b, 1);
-  const k = max < 170 ? 170 / max : 1;
+  const target = 210;
+  const k = max < target ? target / max : 1;
   return [Math.min(255, Math.round(r * k)), Math.min(255, Math.round(g * k)), Math.min(255, Math.round(b * k))];
+}
+
+// Pick black or white text for maximum contrast on the badge background,
+// so the label stays crisp on any hue (white on orange, black on green, ...).
+function fgCode([r, g, b]) {
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b; // perceived, 0..255
+  return lum > 140 ? 30 : 97; // 30 = black, 97 = bright white
 }
 
 function termWidth(sess) {
@@ -62,8 +71,10 @@ function main() {
   const sess = readSession();
   const style = readStyle();
   const [r, g, b] = brighten(st.color);
-  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[30m\x1b[1m${text}\x1b[0m`;
-  const dim = (text) => `\x1b[2m${text}\x1b[0m`;
+  const fg = fgCode([r, g, b]);
+  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[${fg}m\x1b[1m${text}\x1b[0m`;
+  // Readable mid-grey for the secondary tail; raw ANSI dim renders too faint on some terminals.
+  const dim = (text) => `\x1b[38;5;250m${text}\x1b[0m`;
 
   const label = st.label.toUpperCase();
   const model = (sess.model && (sess.model.display_name || sess.model.id)) || '';
