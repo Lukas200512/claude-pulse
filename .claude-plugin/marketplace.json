@@ -1,0 +1,17 @@
+{
+  "name": "claude-pulse",
+  "owner": {
+    "name": "Lukas200512",
+    "url": "https://github.com/Lukas200512"
+  },
+  "description": "At-a-glance activity indicator for Claude Code.",
+  "plugins": [
+    {
+      "name": "claude-pulse",
+      "source": "./",
+      "description": "See what Claude Code is doing — colored statusline badge, window title, and notifications.",
+      "category": "ui",
+      "keywords": ["terminal", "statusline", "notifications", "theme"]
+    }
+  ]
+}

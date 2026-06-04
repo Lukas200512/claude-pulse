@@ -1,48 +1,139 @@
-# Claude Terminal Colors
+# Claude Pulse
 
-Terminal background changes color based on what [Claude Code](https://claude.ai/code) is doing. Bash command? Brown. Editing? Blue. Reading? Violet. Done? Green. So you always know at a glance.
+See what [Claude Code](https://claude.ai/code) is doing at a glance — through a
+**colored statusline badge**, your **window title**, and **notifications**. Each
+is independently toggleable.
 
-Implemented as Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) that emit [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands) escape sequences.
-
-| State | Color |
+| Method | What you get |
 |---|---|
-| Shell command | Warm brown |
-| Writing code | Deep blue |
-| Reading / searching | Dark violet |
-| Subagent working | Dark teal |
-| Needs your input | Dark red |
-| Thinking | Midnight blue |
-| Done | Dark green |
-| Notification | Warm orange |
-| Other tool | Slate |
+| 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
+| 🏷️ **Window title** | the current activity in your tab/window title (`> Claude > Editing`) |
+| 🔔 **Notifications** | a ping when Claude is **done** or **needs your input** |
+
+Works on Linux, macOS, WSL, SSH, and **native Windows** — it never writes to
+`/dev/tty`, so it isn't tied to one platform.
+
+> **Heads up — no more background colors.** Earlier versions of this project
+> repainted the terminal *background*. As of Claude Code **v2.1.139** that's no
+> longer possible (see [Why not background colors?](#why-not-background-colors)).
+> The badge / title / notifications above are the supported replacement.
 
 ## Install
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/main/install.sh | bash
+This is a Claude Code **plugin** — no scripts, no manual install:
+
+```text
+/plugin marketplace add Lukas200512/claude-pulse
+/plugin install claude-pulse@claude-pulse
 ```
 
-Requires `jq`. Works in iTerm2, Kitty, Alacritty, WezTerm, GNOME Terminal, Konsole, Windows Terminal, Hyper, Tabby, foot, Termux. **Not** macOS Terminal.app (no OSC 11 support).
+Then run the wizard to pick your features and theme:
+
+```text
+/claude-pulse:setup
+```
+
+Restart Claude Code afterwards so the statusline badge appears. Enable or disable
+the whole thing anytime from `/plugin`:
+
+```text
+/plugin disable claude-pulse@claude-pulse
+/plugin enable  claude-pulse@claude-pulse
+```
+
+## Stay up to date
+
+By default, third-party marketplaces don't auto-update, so you'd otherwise have to
+pull new versions by hand. To get updates automatically, **enable auto-update for
+this marketplace once**: open `/plugin`, select the `claude-pulse` marketplace, and
+turn on auto-update. After that, Claude Code refreshes and updates the plugin **on
+startup** — no manual command, no guessing whether you're on the latest version.
+
+(Without it, you'd update manually with `/plugin marketplace update claude-pulse`
+followed by reinstalling — which is exactly what auto-update saves you from.)
+
+## States
+
+The badge color and label reflect what Claude is doing:
+
+| State | Label | Color (theme) |
+|---|---|---|
+| Shell command | `SHELL` | warm brown |
+| Writing code | `EDITING` | deep blue |
+| Reading / searching | `READING` | dark violet |
+| Subagent working | `SUBAGENT` | dark teal |
+| Needs your input | `NEEDS INPUT` | dark red |
+| Thinking | `THINKING` | midnight blue |
+| Done | `DONE` | dark green |
+| Other tool | `WORKING` | slate |
+
+Theme colors are brightened for the small badge so they stay readable.
+
+## Configure
+
+Turn individual features on or off anytime:
+
+```text
+/claude-pulse:config
+```
+
+Settings live in `~/.claude/claude-pulse/config.conf`:
+
+```
+FEATURE_STATUSLINE=on
+FEATURE_TITLE=off       # off by default — Claude Code overrides the title
+FEATURE_NOTIFY=on
+NOTIFY_DONE=on
+NOTIFY_INPUT=on
+BADGE_STYLE=wide        # compact | wide | full (full = whole status line)
+```
+
+`BADGE_STYLE` controls how prominent the badge is — `compact` is a small badge,
+`wide` a larger colored block, `full` turns the entire status line into a colored
+bar in the current state's color.
 
 ## Themes
 
-`dark-minimal` (default), `ocean`, `monokai`. Swap:
+`dark-minimal` (default), `ocean`, `monokai`. Switch in-session:
 
-```bash
-cp ~/.claude/hooks/themes/ocean.conf ~/.claude/hooks/theme.conf
+```text
+/claude-pulse:theme ocean
 ```
 
-For a custom theme, copy any `.conf`, edit the hex values, copy it to `theme.conf`.
+…or drop a custom theme at `~/.claude/claude-pulse/theme.conf` (only
+`COLOR_*="#rrggbb"` lines are read — the file is parsed, never executed).
+Resolution order: `$CLAUDE_PULSE_THEME` → `~/.claude/claude-pulse/theme.conf`
+→ built-in defaults.
 
-## Troubleshooting
+## Why not background colors?
 
-**Terminal jumps to the bottom when I scroll up.** Most terminals have a "scroll on output" setting that snaps to the prompt whenever anything is written to the TTY. The hook deduplicates writes so this rarely fires, but to eliminate it entirely, disable that setting (iTerm2 / GNOME Terminal / Konsole: scrolling preferences; Alacritty: `scrolling.auto_scroll = false`; WezTerm: `scroll_to_bottom_on_input = false`).
+The terminal background is set with an [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands)
+escape sequence. Two things make that impossible from a hook on current Claude
+Code:
 
-## Uninstall
+1. **No controlling terminal.** As of Claude Code **v2.1.139**, command hooks run
+   in their own session without a controlling terminal, so writing escape
+   sequences directly to `/dev/tty` fails (`No such device or address`).
+2. **Allowlisted output channel.** The sanctioned replacement — the hook
+   `terminalSequence` field — only permits **OSC 0/1/2/9/99/777 and BEL** (titles,
+   notifications, bell). Color sequences like OSC 11 are rejected, and there's no
+   setting to change it.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/main/uninstall.sh | bash
-```
+So no plugin can repaint the background on current Claude Code, on any OS. This
+plugin uses the channels that *do* work: the statusline (which Claude Code renders
+itself, in color), the window title, and notifications.
+
+## Notes & limitations
+
+- **Statusline** is registered in `~/.claude/settings.json` by `/setup` (your
+  existing one is backed up to `settings.json.bak`) and appears after a restart.
+  **Before uninstalling the plugin**, run `/claude-pulse:config` and
+  turn the statusline off, so no dangling entry is left behind.
+- **Window title** is **off by default**: Claude Code sets its own window title
+  and overwrites ours, so it rarely shows. Enable it via `/…:config` if your
+  setup happens to keep it.
+- **Notifications** (OSC 9) are terminal-dependent: known to work in Windows
+  Terminal, iTerm2, WezTerm, ConEmu, Ghostty. Other terminals may ignore them.
 
 ## License
 
