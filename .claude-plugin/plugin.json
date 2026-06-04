@@ -1,7 +1,7 @@
 {
   "name": "claude-pulse",
   "displayName": "Claude Pulse",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "See what Claude Code is doing at a glance — a colored statusline badge, the activity in your window title, and notifications on done / needs-input.",
   "author": {
     "name": "Lukas200512",
