@@ -86,13 +86,18 @@ Safe-parsed: only these keys, values `on`/`off`. Missing file → all on by defa
 Point every event at `node …/indicator.js <event>`:
 `PreToolUse, UserPromptSubmit, SessionStart, SessionEnd, Stop, Notification`.
 
-### Removed / retired (OSC-11 dead path)
+### Distribution: plugin-only
+This is **always a Claude Code plugin** — there is no manual install. Remove the
+whole standalone path:
 - `hooks/color.sh`, `scripts/selftest.sh` — OSC-11 based, removed.
-- `scripts/detect-env.sh` — kept, but its verdict is rewritten around
-  notification/title support (OSC-11 no longer the criterion).
-- `install.sh` — the standalone OSC-11 installer is obsolete; remove it.
-  `uninstall.sh` — kept and updated to also strip a registered `statusLine`
-  and old color hooks from `settings.json`, and remove `~/.claude/terminal-colors`.
+- `install.sh`, `uninstall.sh` — removed (no manual install/uninstall).
+- `scripts/detect-env.sh` — kept, verdict rewritten around title/notification
+  support (OSC-11 no longer the criterion).
+- Cleanup of the `settings.json` `statusLine` we register is handled inside the
+  plugin: `/claude-terminal-colors:config` can turn the statusline off (which
+  unregisters it and restores the backup). README documents: disable the
+  statusline via `/…:config` before `/plugin uninstall` so no dangling
+  `statusLine` entry remains.
 
 ## Error handling & boundaries
 

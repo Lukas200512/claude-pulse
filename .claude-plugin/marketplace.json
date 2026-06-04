@@ -4,14 +4,14 @@
     "name": "Lukas200512",
     "url": "https://github.com/Lukas200512"
   },
-  "description": "Dynamic terminal background colors for Claude Code.",
+  "description": "At-a-glance activity indicator for Claude Code.",
   "plugins": [
     {
       "name": "claude-terminal-colors",
       "source": "./",
-      "description": "Terminal background changes color based on what Claude Code is doing.",
+      "description": "See what Claude Code is doing — colored statusline badge, window title, and notifications.",
       "category": "ui",
-      "keywords": ["terminal", "colors", "hooks", "theme"]
+      "keywords": ["terminal", "statusline", "notifications", "theme"]
     }
   ]
 }

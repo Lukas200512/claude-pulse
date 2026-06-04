@@ -4,60 +4,42 @@
       {
         "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh pre"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" pre" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh prompt"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" prompt" }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh start"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" start" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh end"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" end" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh stop"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" stop" }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/hooks/color.sh notify"
-          }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/indicator.js\" notify" }
         ]
       }
     ]

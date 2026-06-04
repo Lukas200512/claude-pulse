@@ -6,9 +6,10 @@ allowed-tools: Bash
 
 You are switching the active theme for the **claude-terminal-colors** plugin.
 
-The active theme is the file `~/.claude/terminal-colors/theme.conf` — `color.sh`
-reads it on the next hook. Bundled themes (`dark-minimal.conf`, `ocean.conf`,
-`monokai.conf`) live in the plugin's `themes/` directory.
+The active theme is the file `~/.claude/terminal-colors/theme.conf` — the
+indicator reads it to color the statusline badge. Bundled themes
+(`dark-minimal.conf`, `ocean.conf`, `monokai.conf`) live in the plugin's
+`themes/` directory.
 
 Requested theme: **$ARGUMENTS**
 
@@ -33,5 +34,6 @@ Do this:
    mkdir -p ~/.claude/terminal-colors
    cp "$THEMES_DIR/$ARGUMENTS.conf" ~/.claude/terminal-colors/theme.conf
    ```
-5. Confirm the switch and tell the user it takes effect on the next tool call
-   (no restart needed) — any tool will repaint the background.
+5. Confirm the switch and tell the user the new theme colors the statusline
+   badge from the next hook event on (no restart needed). If they don't have the
+   statusline enabled, point them to `/claude-terminal-colors:setup`.

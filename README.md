@@ -1,111 +1,121 @@
 # Claude Terminal Colors
 
-Terminal background changes color based on what [Claude Code](https://claude.ai/code) is doing. Bash command? Brown. Editing? Blue. Reading? Violet. Done? Green. So you always know at a glance.
+See what [Claude Code](https://claude.ai/code) is doing at a glance — through a
+**colored statusline badge**, your **window title**, and **notifications**. Each
+is independently toggleable.
 
-Implemented as Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) that emit [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands) escape sequences.
-
-| State | Color |
+| Method | What you get |
 |---|---|
-| Shell command | Warm brown |
-| Writing code | Deep blue |
-| Reading / searching | Dark violet |
-| Subagent working | Dark teal |
-| Needs your input | Dark red |
-| Thinking | Midnight blue |
-| Done | Dark green |
-| Notification | Warm orange |
-| Other tool | Slate |
+| 🟦 **Statusline badge** | a colored badge in the status bar: `SHELL` / `EDITING` / `READING` / `SUBAGENT` / `DONE` … |
+| 🏷️ **Window title** | the current activity in your tab/window title (`> Claude > Editing`) |
+| 🔔 **Notifications** | a ping when Claude is **done** or **needs your input** |
 
-A tool's color stays until the next state change, so the background doesn't flicker. Starting or quitting Claude Code resets the terminal to its own default, so no color lingers between sessions.
+Works on Linux, macOS, WSL, SSH, and **native Windows** — it never writes to
+`/dev/tty`, so it isn't tied to one platform.
 
-## Install as a Claude Code plugin (recommended)
+> **Heads up — no more background colors.** Earlier versions of this project
+> repainted the terminal *background*. As of Claude Code **v2.1.139** that's no
+> longer possible (see [Why not background colors?](#why-not-background-colors)).
+> The badge / title / notifications above are the supported replacement.
 
-No scripts, no editing `settings.json` — install once and toggle it from `/plugin`:
+## Install
+
+This is a Claude Code **plugin** — no scripts, no manual install:
 
 ```text
 /plugin marketplace add Lukas200512/claude-terminal-colors
 /plugin install claude-terminal-colors@claude-terminal-colors
 ```
 
-Enable, disable, or remove it anytime:
+Then run the wizard to pick your features and theme:
+
+```text
+/claude-terminal-colors:setup
+```
+
+Restart Claude Code afterwards so the statusline badge appears. Enable or disable
+the whole thing anytime from `/plugin`:
 
 ```text
 /plugin disable claude-terminal-colors@claude-terminal-colors
 /plugin enable  claude-terminal-colors@claude-terminal-colors
 ```
 
-Disabling stops the hooks from firing; your own `settings.json` is never touched.
+## States
 
-Switch theme from inside Claude Code:
+The badge color and label reflect what Claude is doing:
+
+| State | Label | Color (theme) |
+|---|---|---|
+| Shell command | `SHELL` | warm brown |
+| Writing code | `EDITING` | deep blue |
+| Reading / searching | `READING` | dark violet |
+| Subagent working | `SUBAGENT` | dark teal |
+| Needs your input | `NEEDS INPUT` | dark red |
+| Thinking | `THINKING` | midnight blue |
+| Done | `DONE` | dark green |
+| Other tool | `WORKING` | slate |
+
+Theme colors are brightened for the small badge so they stay readable.
+
+## Configure
+
+Turn individual features on or off anytime:
 
 ```text
-/claude-terminal-colors:theme ocean
+/claude-terminal-colors:config
 ```
 
-## Install manually (standalone)
+Settings live in `~/.claude/terminal-colors/config.conf`:
 
-Prefer not to use the plugin system? Run the installer:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/main/install.sh | bash
 ```
-
-…or just point Claude Code at this repo and ask it to install — it'll clone, copy the hook, set up `~/.claude/settings.json`, and pick a theme with you.
-
-The standalone installer needs `jq` (to merge into `settings.json`); the hook itself does not — it falls back to plain bash, so the plugin runs with no external dependencies. Works in iTerm2, Kitty, Alacritty, WezTerm, GNOME Terminal, Konsole, Windows Terminal, Hyper, Tabby, foot, Termux. **Not** macOS Terminal.app (no OSC 11 support).
-
-Inside **tmux** or **screen** the color sequence is wrapped in a passthrough so it reaches the outer terminal. tmux additionally needs passthrough enabled (tmux ≥ 3.3):
-
-```bash
-tmux set -g allow-passthrough on
+FEATURE_STATUSLINE=on
+FEATURE_TITLE=on
+FEATURE_NOTIFY=on
+NOTIFY_DONE=on
+NOTIFY_INPUT=on
 ```
-
-## Platform support
-
-The background color is set by writing an [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands) sequence to the terminal. That works wherever the hook can reach a real terminal device, which is **where Claude Code runs**, not necessarily where you sit:
-
-| Where Claude Code runs | Background colors |
-|---|---|
-| Linux | ✅ |
-| macOS (in an OSC 11 terminal — iTerm2, Kitty, WezTerm, …) | ✅ |
-| Windows via **WSL** | ✅ |
-| **SSH** into a Linux/macOS host (e.g. from Windows Terminal) | ✅ — the sequence travels over SSH and colors your local terminal |
-| **Native Windows** (Claude Code in PowerShell, no WSL) | ❌ — see below |
-| macOS Terminal.app | ❌ — no OSC 11 support |
-
-**Why native Windows can't do background colors.** On native Windows there is no `/dev/tty`, and Claude Code's only sanctioned cross-platform channel for a hook to emit escape sequences (the `terminalSequence` hook field) **allowlists titles, notifications, and the bell — but explicitly rejects color sequences like OSC 11**. So no plugin can repaint the background from a hook there. If you're on Windows, run Claude Code inside **WSL** or over **SSH** and it works fully. (The terminal renders fine either way — it's the hook-side write that's blocked on native Windows.)
 
 ## Themes
 
-`dark-minimal` (default), `ocean`, `monokai`.
-
-**Plugin install** — switch from inside Claude Code:
+`dark-minimal` (default), `ocean`, `monokai`. Switch in-session:
 
 ```text
 /claude-terminal-colors:theme ocean
 ```
 
-…or drop a theme file at `~/.claude/terminal-colors/theme.conf`.
+…or drop a custom theme at `~/.claude/terminal-colors/theme.conf` (only
+`COLOR_*="#rrggbb"` lines are read — the file is parsed, never executed).
+Resolution order: `$CLAUDE_TERMINAL_THEME` → `~/.claude/terminal-colors/theme.conf`
+→ built-in defaults.
 
-**Standalone install** — copy a bundled theme over the active one:
+## Why not background colors?
 
-```bash
-cp ~/.claude/hooks/themes/ocean.conf ~/.claude/hooks/theme.conf
-```
+The terminal background is set with an [OSC 11](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands)
+escape sequence. Two things make that impossible from a hook on current Claude
+Code:
 
-For a custom theme, copy any `.conf`, edit the hex values, and put it at your active-theme path. Theme files are parsed, not executed — only `COLOR_*="#rrggbb"` lines are read, so a stray line can't run code.
+1. **No controlling terminal.** As of Claude Code **v2.1.139**, command hooks run
+   in their own session without a controlling terminal, so writing escape
+   sequences directly to `/dev/tty` fails (`No such device or address`).
+2. **Allowlisted output channel.** The sanctioned replacement — the hook
+   `terminalSequence` field — only permits **OSC 0/1/2/9/99/777 and BEL** (titles,
+   notifications, bell). Color sequences like OSC 11 are rejected, and there's no
+   setting to change it.
 
-`color.sh` looks for a theme in this order: `$CLAUDE_TERMINAL_THEME` → `~/.claude/terminal-colors/theme.conf` → `~/.claude/hooks/theme.conf` → built-in defaults.
+So no plugin can repaint the background on current Claude Code, on any OS. This
+plugin uses the channels that *do* work: the statusline (which Claude Code renders
+itself, in color), the window title, and notifications.
 
-## Troubleshooting
+## Notes & limitations
 
-**Terminal jumps to the bottom when I scroll up.** Most terminals have a "scroll on output" setting that snaps to the prompt whenever anything is written to the TTY. The hook only writes when the color actually changes — a tool's color persists until the next state change, and consecutive identical states are deduped — so this rarely fires. To eliminate it entirely, disable that setting (iTerm2 / GNOME Terminal / Konsole: scrolling preferences; Alacritty: `scrolling.auto_scroll = false`; WezTerm: `scroll_to_bottom_on_input = false`).
-
-## Uninstall
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/main/uninstall.sh | bash
-```
+- **Statusline** is registered in `~/.claude/settings.json` by `/setup` (your
+  existing one is backed up to `settings.json.bak`) and appears after a restart.
+  **Before uninstalling the plugin**, run `/claude-terminal-colors:config` and
+  turn the statusline off, so no dangling entry is left behind.
+- **Window title** may alternate with Claude Code's own title — that's expected.
+- **Notifications** (OSC 9) are terminal-dependent: known to work in Windows
+  Terminal, iTerm2, WezTerm, ConEmu, Ghostty. Other terminals may ignore them.
 
 ## License
 
