@@ -8,8 +8,17 @@
 INPUT=$(cat 2>/dev/null || true)
 HOOK_TYPE="$1"
 
-# Load user theme or fall back to defaults
-THEME_FILE="${CLAUDE_TERMINAL_THEME:-$HOME/.claude/hooks/theme.conf}"
+# Resolve the theme file. Priority:
+#   1. $CLAUDE_TERMINAL_THEME              — explicit override (any path)
+#   2. ~/.claude/terminal-colors/theme.conf — drop a theme here (plugin install)
+#   3. ~/.claude/hooks/theme.conf          — legacy standalone-installer location
+#   4. built-in defaults below
+THEME_FILE="${CLAUDE_TERMINAL_THEME:-}"
+if [ -z "$THEME_FILE" ]; then
+  for _cand in "$HOME/.claude/terminal-colors/theme.conf" "$HOME/.claude/hooks/theme.conf"; do
+    if [ -f "$_cand" ]; then THEME_FILE="$_cand"; break; fi
+  done
+fi
 
 # Parse the theme file safely. We deliberately do NOT `source` it — a theme
 # is plain config, not code, so we only accept `COLOR_<NAME>="#rrggbb"` lines

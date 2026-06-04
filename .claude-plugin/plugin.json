@@ -1,0 +1,15 @@
+{
+  "name": "claude-terminal-colors",
+  "displayName": "Claude Terminal Colors",
+  "version": "1.0.0",
+  "description": "Dynamic terminal background colors based on what Claude Code is doing — bash, editing, reading, thinking, done.",
+  "author": {
+    "name": "Lukas200512",
+    "url": "https://github.com/Lukas200512"
+  },
+  "homepage": "https://github.com/Lukas200512/claude-terminal-colors",
+  "repository": "https://github.com/Lukas200512/claude-terminal-colors",
+  "license": "MIT",
+  "keywords": ["terminal", "colors", "hooks", "osc11", "background", "theme"],
+  "hooks": "./hooks/hooks.json"
+}

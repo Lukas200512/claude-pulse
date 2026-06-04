@@ -1,0 +1,17 @@
+{
+  "name": "claude-terminal-colors",
+  "owner": {
+    "name": "Lukas200512",
+    "url": "https://github.com/Lukas200512"
+  },
+  "description": "Dynamic terminal background colors for Claude Code.",
+  "plugins": [
+    {
+      "name": "claude-terminal-colors",
+      "source": "./",
+      "description": "Terminal background changes color based on what Claude Code is doing.",
+      "category": "ui",
+      "keywords": ["terminal", "colors", "hooks", "theme"]
+    }
+  ]
+}

@@ -16,9 +16,33 @@ Implemented as Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-cod
 | Notification | Warm orange |
 | Other tool | Slate |
 
-## Install
+## Install as a Claude Code plugin (recommended)
 
-Either run the installer:
+No scripts, no editing `settings.json` — install once and toggle it from `/plugin`:
+
+```text
+/plugin marketplace add Lukas200512/claude-terminal-colors
+/plugin install claude-terminal-colors@claude-terminal-colors
+```
+
+Enable, disable, or remove it anytime:
+
+```text
+/plugin disable claude-terminal-colors@claude-terminal-colors
+/plugin enable  claude-terminal-colors@claude-terminal-colors
+```
+
+Disabling stops the hooks from firing; your own `settings.json` is never touched.
+
+Switch theme from inside Claude Code:
+
+```text
+/claude-terminal-colors:theme ocean
+```
+
+## Install manually (standalone)
+
+Prefer not to use the plugin system? Run the installer:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lukas200512/claude-terminal-colors/main/install.sh | bash
@@ -36,15 +60,25 @@ tmux set -g allow-passthrough on
 
 ## Themes
 
-`dark-minimal` (default), `ocean`, `monokai`. Swap:
+`dark-minimal` (default), `ocean`, `monokai`.
+
+**Plugin install** — switch from inside Claude Code:
+
+```text
+/claude-terminal-colors:theme ocean
+```
+
+…or drop a theme file at `~/.claude/terminal-colors/theme.conf`.
+
+**Standalone install** — copy a bundled theme over the active one:
 
 ```bash
 cp ~/.claude/hooks/themes/ocean.conf ~/.claude/hooks/theme.conf
 ```
 
-For a custom theme, copy any `.conf`, edit the hex values, copy it to `theme.conf`. Theme files are parsed, not executed — only `COLOR_*="#rrggbb"` lines are read, so a stray line can't run code.
+For a custom theme, copy any `.conf`, edit the hex values, and put it at your active-theme path. Theme files are parsed, not executed — only `COLOR_*="#rrggbb"` lines are read, so a stray line can't run code.
 
-To point at a theme file elsewhere, set `CLAUDE_TERMINAL_THEME` to its path; it overrides `~/.claude/hooks/theme.conf`.
+`color.sh` looks for a theme in this order: `$CLAUDE_TERMINAL_THEME` → `~/.claude/terminal-colors/theme.conf` → `~/.claude/hooks/theme.conf` → built-in defaults.
 
 ## Troubleshooting
 
