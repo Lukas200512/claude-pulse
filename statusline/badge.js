@@ -60,6 +60,23 @@ function fgCode([r, g, b]) {
   return lum > 140 ? 30 : 97; // 30 = black, 97 = bright white
 }
 
+// Permission modes → short label + fixed vivid colour (theme-independent so
+// they stay legible on any theme). 'default' is intentionally absent: no chip.
+const MODES = {
+  plan:              { label: 'PLAN',      color: '#4a3aff' },
+  acceptEdits:       { label: 'AUTO-EDIT', color: '#1f8f3a' },
+  auto:              { label: 'AUTO',      color: '#00a0a0' },
+  dontAsk:           { label: 'NO-ASK',    color: '#c08000' },
+  bypassPermissions: { label: 'BYPASS',    color: '#c01818' },
+};
+const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
+
+// A small colored chip with contrast-aware, always-crisp text.
+function chip(text, hex) {
+  const [r, g, b] = brighten(hex);
+  return `\x1b[48;2;${r};${g};${b}m\x1b[${fgCode([r, g, b])}m\x1b[1m ${text} \x1b[0m`;
+}
+
 function termWidth(sess) {
   const w = sess.width || sess.cols || (sess.terminal && sess.terminal.width) ||
             parseInt(process.env.COLUMNS || '', 10);
@@ -83,16 +100,27 @@ function main() {
   if (cwd) dir = path.basename(cwd);
   const tail = [model, dir].filter(Boolean).join(' · ');
 
+  // Permission mode: prefer the live statusline field, fall back to the
+  // last value the hook persisted into state.
+  const mode = (typeof sess.permission_mode === 'string' && sess.permission_mode) || st.mode || 'default';
+  const modeInfo = MODES[mode];
+
+  // Coloured chips for compact/wide; plain bracketed text for the full bar
+  // (a single-colour bar can't show separate chip backgrounds).
+  let chips = '', inlineChips = '';
+  if (modeInfo) { chips += '  ' + chip(modeInfo.label, modeInfo.color); inlineChips += `  [ ${modeInfo.label} ]`; }
+  if (st.needsApproval) { chips += '  ' + chip('WARTET AUF OK', APPROVAL_COLOR); inlineChips += '  [ WARTET AUF OK ]'; }
+
   let out;
   if (style === 'compact') {
-    out = onColor(` ${st.icon} ${label} `) + (tail ? '  ' + dim(tail) : '');
+    out = onColor(` ${st.icon} ${label} `) + chips + (tail ? '  ' + dim(tail) : '');
   } else if (style === 'full') {
-    let inner = ` ${st.icon} ${label}` + (tail ? `  ·  ${tail} ` : ' ');
+    let inner = ` ${st.icon} ${label}` + inlineChips + (tail ? `  ·  ${tail} ` : ' ');
     const w = termWidth(sess);
     if (inner.length < w) inner += ' '.repeat(w - inner.length);
     out = onColor(inner);
   } else { // wide (default)
-    out = onColor(`    ${st.icon}  ${label}    `) + (tail ? '  ' + dim(tail) : '');
+    out = onColor(`    ${st.icon}  ${label}    `) + chips + (tail ? '  ' + dim(tail) : '');
   }
   process.stdout.write(out);
 }
