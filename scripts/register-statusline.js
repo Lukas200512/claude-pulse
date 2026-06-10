@@ -53,6 +53,16 @@ function pluginRoot(p) {
 const settings = load();
 // One-time backup of the pre-claude-pulse original. Never overwritten on
 // later runs — by then settings.json already contains our own entry.
+// A .bak left by pre-2.4 versions (which re-copied it on every run) may
+// itself contain our entry — strip that so the backup stays a usable
+// pre-install restore point instead of restoring a dangling launcher.
+try {
+  const bak = JSON.parse(fs.readFileSync(SETTINGS + '.bak', 'utf8'));
+  if (bak && isOurs(bak.statusLine)) {
+    delete bak.statusLine;
+    fs.writeFileSync(SETTINGS + '.bak', JSON.stringify(bak, null, 2) + '\n');
+  }
+} catch { /* no .bak, or unreadable — leave it alone */ }
 if (fs.existsSync(SETTINGS) && !fs.existsSync(SETTINGS + '.bak')) {
   try { fs.copyFileSync(SETTINGS, SETTINGS + '.bak'); } catch { /* ignore */ }
 }
@@ -67,9 +77,14 @@ if (mode === 'on') {
     console.error('on: launcher not found at ' + src);
     process.exit(1);
   }
-  // Stash a foreign statusline so 'off' can restore it later.
+  // Stash a foreign statusline so 'off' can restore it later. When there is
+  // currently NO statusline, the correct restore target is "none" — drop any
+  // stale stash from an earlier install so 'off' can't resurrect it. (When
+  // the current entry is ours, keep the stash: on→on→off must still restore.)
   if (settings.statusLine && !isOurs(settings.statusLine)) {
     try { fs.writeFileSync(PREV_FILE, JSON.stringify(settings.statusLine, null, 2) + '\n'); } catch { /* ignore */ }
+  } else if (!settings.statusLine) {
+    try { fs.rmSync(PREV_FILE, { force: true }); } catch { /* ignore */ }
   }
   settings.statusLine = { type: 'command', command: `node "${STABLE_LAUNCHER}"`, padding: 0 };
 } else if (mode === 'off') {
@@ -78,11 +93,12 @@ if (mode === 'on') {
     try { prev = JSON.parse(fs.readFileSync(PREV_FILE, 'utf8')); } catch { /* none saved */ }
     if (prev) {
       settings.statusLine = prev;
-      try { fs.rmSync(PREV_FILE, { force: true }); } catch { /* ignore */ }
     } else {
       delete settings.statusLine;
     }
   }
+  // The user's current (or just-restored) statusline supersedes any stash.
+  try { fs.rmSync(PREV_FILE, { force: true }); } catch { /* ignore */ }
 } else {
   console.error('usage: register-statusline.js on <pluginRoot> | off');
   process.exit(1);

@@ -27,8 +27,12 @@ Do this:
      THEMES_DIR=$(dirname "$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins" -path '*claude-pulse*/themes/dark-minimal.conf' 2>/dev/null | head -n1)")
    fi
    CFG_DIR="$(node -p 'const p=require("path"),o=require("os");p.join(process.env.CLAUDE_CONFIG_DIR||p.join(o.homedir(),".claude"),"claude-pulse")')"
+   [ -f "$THEMES_DIR/dark-minimal.conf" ] || echo "THEMES-NOT-FOUND"
    echo "Using themes dir: $THEMES_DIR"; echo "Config dir: $CFG_DIR"
    ```
+   (When `find` matches nothing, `dirname ""` yields `.` — hence the explicit
+   file check.) If `THEMES-NOT-FOUND` was printed, say you couldn't locate the
+   plugin's themes and stop.
 2. If no theme name was given, list the `.conf` files in `$THEMES_DIR` and ask
    the user which one they want. Stop here.
 3. Otherwise verify `$THEMES_DIR/$ARGUMENTS.conf` exists. If not, list the

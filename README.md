@@ -85,6 +85,8 @@ The badge color and label reflect what Claude is doing:
 | Needs your input | `NEEDS INPUT` | dark red |
 | Thinking | `THINKING` | midnight blue |
 | Done | `DONE` | dark green |
+| Session started | `READY` | midnight blue |
+| No activity yet | `IDLE` | midnight blue |
 | Other tool | `WORKING` | slate |
 
 Theme colors are brightened for the small badge so they stay readable. On
@@ -113,6 +115,7 @@ FEATURE_CONTEXT=on      # context-window usage bar
 FEATURE_EFFORT=on       # reasoning-effort chip (LOW…MAX)
 FEATURE_DURATION=on     # "⏱" elapsed since the turn started; total on DONE
 FEATURE_DETAIL=on       # what exactly is happening (file, command, agent type)
+                        # (defaults to off for configs created before 2.4)
 FEATURE_COST=on         # session cost in USD
 NOTIFY_DONE=on
 NOTIFY_INPUT=on
@@ -169,9 +172,11 @@ itself, in color), the window title, and notifications.
 - **Statusline** is registered in `settings.json` by `/setup`. A one-time backup
   of your pre-install settings is kept at `settings.json.bak`, and if you had
   your own statusline before, it is saved and **restored automatically** when
-  you turn the badge off. **Before uninstalling the plugin**, run
-  `/claude-pulse:config` and turn the statusline off, so no dangling entry is
-  left behind.
+  you turn the badge off. (Both apply to statuslines replaced from **2.4.0 on**;
+  versions before that overwrote the backup on every change — if such a backup
+  contains the claude-pulse entry, it is cleaned up on the next change.)
+  **Before uninstalling the plugin**, run `/claude-pulse:config` and turn the
+  statusline off, so no dangling entry is left behind.
 - **Window title** is **off by default**: Claude Code sets its own window title
   and overwrites ours, so it rarely shows. Enable it via `/…:config` if your
   setup happens to keep it.

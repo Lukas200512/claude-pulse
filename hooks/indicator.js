@@ -59,6 +59,8 @@ const FLAGS = new Set([
 ]);
 const cfg = readKV(CONFIG_FILE, FLAGS, v => v === 'on' || v === 'off');
 const on = (k, def = true) => (cfg[k] ? cfg[k] === 'on' : def);
+let cfgFileExists = false;
+try { fs.accessSync(CONFIG_FILE); cfgFileExists = true; } catch { /* no config yet */ }
 
 const COLORS = new Set([
   'COLOR_BASH', 'COLOR_CODE', 'COLOR_READ', 'COLOR_AGENT', 'COLOR_INPUT',
@@ -149,6 +151,16 @@ function removeSubagent(dir, id) {
 }
 function clearSubagents(dir) {
   try { for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f)); } catch { /* none */ }
+}
+// Pre-2.4 hooks wrote markers as loose files directly in subagents/ — the
+// badge still counts them as a fallback, so clear them at boundaries too or
+// upgraders see a phantom "⚙ N" until GC.
+function clearLooseMarkers() {
+  try {
+    for (const e of fs.readdirSync(SUBAGENTS_BASE, { withFileTypes: true })) {
+      if (e.isFile()) { try { fs.unlinkSync(path.join(SUBAGENTS_BASE, e.name)); } catch { /* gone */ } }
+    }
+  } catch { /* dir missing */ }
 }
 
 // ---- garbage-collect leftovers of dead sessions --------------
@@ -266,6 +278,14 @@ function main() {
     return;
   }
 
+  // SessionStart also fires mid-turn when the context is compacted
+  // (source === 'compact') — the turn keeps running, so don't reset the
+  // timer, the subagent markers, or the state (PreCompact already set it).
+  if (event === 'start' && payload.source === 'compact') {
+    process.stdout.write(JSON.stringify({ suppressOutput: true }));
+    return;
+  }
+
   // Session over: remove every trace of this session (badge won't render for
   // it anymore) and skip the usual state write.
   if (event === 'end') {
@@ -279,8 +299,12 @@ function main() {
   // Reset the counter at turn/session boundaries — clears any orphaned markers
   // if a SubagentStop was ever missed. Unconditional (not gated by the feature
   // flag) so toggling the feature off can never freeze a stale "⚙ N".
-  if (event === 'stop' || event === 'start' || event === 'prompt') {
+  // NOT on prompt: Claude Code fires UserPromptSubmit spuriously when a
+  // subagent completes (anthropics/claude-code#16952), which would wipe the
+  // counter for still-running agents mid-turn.
+  if (event === 'stop' || event === 'start') {
     clearSubagents(SUB_DIR);
+    clearLooseMarkers();
   }
   if (event === 'start') gcStale();
 
@@ -306,7 +330,10 @@ function main() {
   const theme = loadTheme();
   const state = deriveState(event, toolName, theme);
 
-  if (event === 'pre' && on('FEATURE_DETAIL')) {
+  // Detail default: on for fresh installs (no config.conf), but OFF when a
+  // pre-2.4 config exists without the key — those users never opted in to
+  // command lines / file names appearing in their statusline.
+  if (event === 'pre' && on('FEATURE_DETAIL', !cfgFileExists)) {
     const detail = deriveDetail(toolName, payload.tool_input);
     if (detail) state.detail = detail;
   }
@@ -333,7 +360,8 @@ function main() {
   if (on('FEATURE_NOTIFY')) {
     let msg = '';
     if (event === 'stop' && on('NOTIFY_DONE')) {
-      msg = 'Claude is done' + (turnDuration ? ' (' + turnDuration + ')' : '');
+      msg = 'Claude is done' +
+        (turnDuration && on('FEATURE_DURATION') ? ' (' + turnDuration + ')' : '');
     } else if (event === 'notify' && on('NOTIFY_INPUT')) {
       msg = 'Claude needs your input';
     }

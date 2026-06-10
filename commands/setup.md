@@ -35,28 +35,36 @@ Step 2 — the user must explicitly agree before it is replaced (it is saved
 and restored when the badge is later disabled).
 
 ### Step 2 — Choose features, badge size and theme
-Use **AskUserQuestion**:
-- **Features** (multi-select): *Statusline badge*, *Notifications* (ping on
-  done / needs-input), *Mode chip*, *Subagent counter*, *Context gauge*,
-  *Effort chip*, *Duration*, *Activity detail* and *Cost* — default all ON.
-  *Mode chip* shows the active permission mode (PLAN / AUTO-EDIT / AUTO /
-  NO-ASK / BYPASS) plus a "NEEDS OK" chip when an auto mode hits a real
-  permission prompt. *Subagent counter* shows `⚙ N` while N subagents run.
-  *Context gauge* shows a colored context-window usage bar. *Effort chip*
-  shows the reasoning effort (LOW/MED/HIGH/XHIGH/MAX). *Duration* shows `⏱`
-  elapsed since the turn started (and the total on DONE). *Activity detail*
-  shows what exactly is happening (`EDITING badge.js`, `SHELL npm test`) —
-  fully local, nothing leaves the machine. *Cost* shows the session cost in
-  USD. *Window title* is **off by default** (Claude Code overrides the title,
-  so it rarely shows); offer it as an advanced opt-in.
-- **Notifications** (single, only if Notifications is ON): *both* /
-  *needs-input only* / *done only*. Maps to NOTIFY_INPUT / NOTIFY_DONE.
+**AskUserQuestion allows at most 4 questions per call and 4 options per
+question** — split the choices into two rounds exactly like this:
+
+**Round 1** (one AskUserQuestion call, 3 questions):
+- **Setup** (single): *Everything on (recommended)* / *Badge only (no
+  notifications)* / *Custom*. "Everything on" = all features below ON;
+  "Badge only" = all ON except Notifications; both skip Round 1b.
 - **Badge size** (single): *compact* / *wide* / *full* (full = the whole
   status line becomes a colored bar). Default *wide*.
 - **Theme** (single): *dark-minimal* / *ocean* / *monokai*.
-- If Step 1 found a foreign statusline and the badge feature is ON, ask
-  explicitly whether to replace it (mention it is saved to
-  `$CFG_DIR/previous-statusline.json` and restored on disable). If the user
+
+**Round 1b — only if "Custom"** (one call, 3 multi-select questions, default
+everything selected):
+- **Core** (multi): *Statusline badge*, *Notifications*, *Mode chip*,
+  *Subagent counter*. Mode chip = active permission mode (PLAN / AUTO-EDIT /
+  AUTO / NO-ASK / BYPASS) plus a "NEEDS OK" chip when an auto mode hits a
+  real permission prompt; subagent counter = `⚙ N` while N subagents run.
+- **Chips** (multi): *Context gauge* (colored context-usage bar), *Effort
+  chip* (LOW…MAX), *Duration* (`⏱` since turn start, total on DONE),
+  *Activity detail* (what exactly is happening: `EDITING badge.js`,
+  `SHELL npm test` — fully local, nothing leaves the machine).
+- **Extras** (multi): *Cost* (session cost in USD), *Window title*
+  (**off by default** — Claude Code overrides the title, so it rarely shows).
+
+**Round 2 — only if needed** (one call, up to 2 questions):
+- **Notifications** (single, only if Notifications is ON): *both* /
+  *needs-input only* / *done only*. Maps to NOTIFY_INPUT / NOTIFY_DONE.
+- **Replace existing statusline?** (single, only if Step 1 found a foreign
+  statusline and the badge feature is ON): explain it is saved to
+  `$CFG_DIR/previous-statusline.json` and restored on disable. If the user
   declines, keep the badge feature OFF.
 
 ### Step 3 — Apply

@@ -3,7 +3,7 @@ description: Turn Claude Pulse features on or off (statusline, notifications, ch
 allowed-tools: Bash, AskUserQuestion
 ---
 
-You are toggling **claude-pulse** features. Concise, one round.
+You are toggling **claude-pulse** features. Keep it concise.
 
 **Locate the plugin and the config dir** (computed with node so it matches
 what the hooks read — respects `CLAUDE_CONFIG_DIR` and Windows home dirs):
@@ -17,20 +17,24 @@ fi
 CFG_DIR="$(node -p 'const p=require("path"),o=require("os");p.join(process.env.CLAUDE_CONFIG_DIR||p.join(o.homedir(),".claude"),"claude-pulse")')"
 ```
 
-**Show the current config**, then via **AskUserQuestion** let the user pick
-which features should be ON (multi-select: *Statusline badge*, *Window title*,
-*Notifications*, *Mode chip*, *Subagent counter*, *Context gauge*, *Effort
-chip*, *Duration*, *Activity detail*, *Cost*), which notifications fire if
-they are on (*both* / *needs-input only* / *done only* → NOTIFY_INPUT /
-NOTIFY_DONE), and the **badge size** (*compact* / *wide* / *full*). *Mode
-chip* shows the active permission mode (PLAN / AUTO-EDIT / AUTO / NO-ASK /
-BYPASS) plus a "NEEDS OK" chip when an auto mode still needs your approval.
-*Subagent counter* shows `⚙ N` while N subagents run. *Context gauge* shows a
-colored context-window usage bar. *Effort chip* shows the reasoning effort
-(LOW/MED/HIGH/XHIGH/MAX). *Duration* shows `⏱` elapsed since the turn started
-(and the total on DONE). *Activity detail* shows what exactly is happening
-(`EDITING badge.js`, `SHELL npm test`) — fully local. *Cost* shows the
-session cost in USD. The current state:
+**Show the current config**, then collect the choices with
+**AskUserQuestion**. The tool allows at most 4 questions per call and 4
+options per question, so use ONE call with 4 questions (defaults = the
+current config):
+- **Core** (multi-select): *Statusline badge*, *Notifications*, *Mode chip*
+  (permission mode PLAN/AUTO-EDIT/AUTO/NO-ASK/BYPASS + "NEEDS OK" chip on a
+  real permission prompt), *Subagent counter* (`⚙ N` while N subagents run).
+- **Chips** (multi-select): *Context gauge* (colored context-usage bar),
+  *Effort chip* (LOW…MAX), *Duration* (`⏱` since turn start, total on DONE),
+  *Activity detail* (what exactly is happening: `EDITING badge.js`,
+  `SHELL npm test` — fully local).
+- **Extras** (multi-select): *Cost* (session cost in USD), *Window title*
+  (off by default — Claude Code usually overrides it).
+- **Badge size** (single): *compact* / *wide* / *full*.
+
+If Notifications ended up ON, ask one follow-up (single): *both* /
+*needs-input only* / *done only* → NOTIFY_INPUT / NOTIFY_DONE. The current
+state:
 
 ```bash
 cat "$CFG_DIR/config.conf" 2>/dev/null || echo "(no config yet — defaults: everything on except title, badge wide)"

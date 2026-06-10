@@ -89,7 +89,14 @@ function resolveBadge() {
   } catch { /* fall through */ }
   try {
     const base = path.join(PLUGINS, 'cache', 'claude-pulse', 'claude-pulse');
-    for (const v of fs.readdirSync(base).sort().reverse()) {
+    // numeric semver order (lexicographic would put 2.9 above 2.10)
+    const bySemverDesc = (a, b) => {
+      const pa = a.split('.').map(n => parseInt(n, 10) || 0);
+      const pb = b.split('.').map(n => parseInt(n, 10) || 0);
+      for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pb[i] || 0) - (pa[i] || 0);
+      return 0;
+    };
+    for (const v of fs.readdirSync(base).sort(bySemverDesc)) {
       const p = path.join(base, v, 'statusline', 'badge.js');
       if (fs.existsSync(p)) return p;
     }

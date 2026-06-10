@@ -78,14 +78,17 @@ function readFlags() {
 const flagOn = (f, k) => (f[k] ? f[k] === 'on' : true);
 
 // Live duration since the turn started (stamp written by the hook on prompt).
+// Falls back to the pre-2.4 shared stamp (mixed-version upgrade window), with
+// a sanity cap so a stale stamp from a crashed/old session never shows hours.
 function turnDuration(sid) {
   const cands = sid
-    ? [path.join(DIR, 'turn-start-' + sid)]
+    ? [path.join(DIR, 'turn-start-' + sid), path.join(DIR, 'turn-start'), path.join(LEGACY_DIR, 'turn-start')]
     : [path.join(DIR, 'turn-start'), path.join(LEGACY_DIR, 'turn-start')];
   for (const f of cands) {
     try {
       const ts = parseInt(fs.readFileSync(f, 'utf8'), 10);
       if (!Number.isFinite(ts)) continue;
+      if (Date.now() - ts > 12 * 3600 * 1000) continue; // stale leftover
       let s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
       if (s < 60) return s + 's';
       if (s < 3600) return Math.floor(s / 60) + 'm' + (s % 60) + 's';

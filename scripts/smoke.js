@@ -106,6 +106,35 @@ check('non-truecolor uses 48;5;N', /48;5;\d+/.test(out) && !out.includes('48;2;'
 hook('end', { session_id: 's1' });
 check('SessionEnd removes session files', !fs.existsSync(path.join(DIR, 'state-s1')));
 
+// --- regression guards (2.4.0-alpha.1 review fixes) -----------------
+console.log('regressions:');
+// prompt must NOT clear live markers (spurious UserPromptSubmit, CC#16952)
+hook('subagent-start', { session_id: 's3', agent_id: 'b1' });
+hook('prompt', { session_id: 's3' });
+check('prompt keeps running subagent markers', badge({ session_id: 's3' }).includes('⚙ 1'));
+// SessionStart(source=compact) fires mid-turn — must not kill the turn timer
+hook('prompt', { session_id: 's3' });
+hook('start', { session_id: 's3', source: 'compact' });
+out = hook('stop', { session_id: 's3' });
+check('compact restart keeps the turn duration', /Claude is done \(\d+s\)/.test(out));
+// pre-2.4 loose markers must be cleared at boundaries, not counted forever
+fs.mkdirSync(path.join(DIR, 'subagents'), { recursive: true });
+fs.writeFileSync(path.join(DIR, 'subagents', 'legacy-marker'), '');
+hook('start', { session_id: 's3' });
+check('legacy loose markers cleared on start', !badge({ session_id: 's3' }).includes('⚙'));
+
+// --- config-dependent defaults ---------------------------------------
+console.log('config defaults:');
+fs.writeFileSync(path.join(DIR, 'config.conf'), 'FEATURE_STATUSLINE=on\nFEATURE_DURATION=off\n');
+hook('pre', { session_id: 's4', tool_name: 'Bash', tool_input: { command: 'curl -u admin:secret x' } });
+check('detail OFF for pre-2.4 configs without the key', readState('s4').detail === undefined);
+hook('prompt', { session_id: 's4' });
+out = hook('stop', { session_id: 's4' });
+check('no duration in done ping when FEATURE_DURATION=off', out.includes('Claude is done') && !/\(\d+s\)/.test(out));
+fs.rmSync(path.join(DIR, 'config.conf'));
+hook('pre', { session_id: 's4', tool_name: 'Bash', tool_input: { command: 'npm run x' } });
+check('detail ON without any config', readState('s4').detail === 'npm run x');
+
 // --- register-statusline -------------------------------------------
 console.log('register-statusline:');
 const SETTINGS = path.join(SANDBOX, 'settings.json');
@@ -128,6 +157,19 @@ fs.writeFileSync(SETTINGS, '{ broken json');
 let refused = false;
 try { register(['on', ROOT]); } catch { refused = true; }
 check('refuses to rewrite broken settings.json', refused && fs.readFileSync(SETTINGS, 'utf8') === '{ broken json');
+// a stale stash from an earlier install must not be resurrected by off
+fs.writeFileSync(SETTINGS, '{}');
+fs.mkdirSync(DIR, { recursive: true });
+fs.writeFileSync(path.join(DIR, 'previous-statusline.json'), JSON.stringify({ type: 'command', command: 'stale-old-thing' }));
+register(['on', ROOT]);
+register(['off']);
+s = JSON.parse(fs.readFileSync(SETTINGS, 'utf8'));
+check('stale previous-statusline stash not resurrected', !s.statusLine);
+// a .bak contaminated by pre-2.4 versions gets its claude-pulse entry stripped
+fs.writeFileSync(SETTINGS + '.bak', JSON.stringify({ model: 'm', statusLine: { type: 'command', command: 'node /x/claude-pulse/statusline.js' } }));
+register(['on', ROOT]);
+const bak = JSON.parse(fs.readFileSync(SETTINGS + '.bak', 'utf8'));
+check('claude-pulse entry stripped from old contaminated .bak', !bak.statusLine && bak.model === 'm');
 
 // -------------------------------------------------------------------
 fs.rmSync(SANDBOX, { recursive: true, force: true });
