@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* ============================================================
  * Claude Pulse — statusline launcher (version-robust)
- * Registered at a STABLE path (~/.claude/claude-pulse/statusline.js)
+ * Registered at a STABLE path (<config dir>/claude-pulse/statusline.js)
  * so settings.json never hardcodes a versioned plugin directory.
  * It resolves the currently-installed badge.js the same way Claude
  * Code resolves the plugin, so a version bump or reinstall just works.
@@ -16,7 +16,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const PLUGINS = path.join(os.homedir(), '.claude', 'plugins');
+// Honor CLAUDE_CONFIG_DIR (multi-profile setups); default ~/.claude.
+const BASE = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+const PLUGINS = path.join(BASE, 'plugins');
 
 function fromInstalled() {
   try {

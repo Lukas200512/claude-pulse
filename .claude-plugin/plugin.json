@@ -1,8 +1,8 @@
 {
   "name": "claude-pulse",
   "displayName": "Claude Pulse",
-  "version": "2.3.0",
-  "description": "See what Claude Code is doing at a glance — a colored statusline badge, the activity in your window title, and notifications on done / needs-input.",
+  "version": "2.4.0-alpha.1",
+  "description": "See what Claude Code is doing at a glance — a colored statusline badge with activity detail, context/cost/duration chips, window title, and notifications on done / needs-input.",
   "author": {
     "name": "Lukas200512",
     "url": "https://github.com/Lukas200512"

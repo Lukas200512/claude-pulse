@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /* ============================================================
  * Claude Pulse — statusline badge
- * Reads the state written by indicator.js and prints a colored
- * badge for Claude Code's status line. Cross-platform; uses
- * 24-bit ANSI which Claude Code renders itself (no /dev/tty).
+ * Reads the per-session state written by indicator.js and prints
+ * a colored badge for Claude Code's status line. Cross-platform;
+ * uses 24-bit ANSI (with a 256-color fallback) which Claude Code
+ * renders itself (no /dev/tty).
  * Style is configurable: compact | wide | full.
  * https://github.com/Lukas200512/claude-pulse
  * ========================================================== */
@@ -12,21 +13,43 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
-const STATE_FILE = path.join(DIR, 'state');
-const CONFIG_FILE = path.join(DIR, 'config.conf');
-const SUBAGENTS_DIR = path.join(DIR, 'subagents');
+// Honor CLAUDE_CONFIG_DIR (multi-profile setups); default ~/.claude.
+const BASE = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+const DIR = path.join(BASE, 'claude-pulse');
+const LEGACY_DIR = path.join(os.homedir(), '.claude', 'claude-pulse');
+const SUBAGENTS_BASE = path.join(DIR, 'subagents');
 
-// Number of subagents currently running = marker files written by the hook.
-function subagentCount() {
-  try { return fs.readdirSync(SUBAGENTS_DIR).length; } catch { return 0; }
+function firstExisting(cands) {
+  for (const f of cands) { try { fs.accessSync(f); return f; } catch { /* next */ } }
+  return cands[0];
+}
+const CONFIG_FILE = firstExisting([path.join(DIR, 'config.conf'), path.join(LEGACY_DIR, 'config.conf')]);
+
+const sanitizeSid = (s) => (typeof s === 'string' ? s.replace(/[^A-Za-z0-9-]/g, '').slice(0, 64) : '');
+
+// Number of subagents currently running in THIS session = marker files
+// written by the hook. Falls back to loose files at the base dir (markers
+// written by pre-2.4 hook versions).
+function subagentCount(sid) {
+  try {
+    return fs.readdirSync(path.join(SUBAGENTS_BASE, sid || '_global'), { withFileTypes: true })
+      .filter(e => e.isFile()).length;
+  } catch { /* fall through */ }
+  try {
+    return fs.readdirSync(SUBAGENTS_BASE, { withFileTypes: true }).filter(e => e.isFile()).length;
+  } catch { return 0; }
 }
 
-function readState() {
-  try {
-    const s = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-    if (s && typeof s.label === 'string') return s;
-  } catch { /* fall through */ }
+function readState(sid) {
+  const cands = sid
+    ? [path.join(DIR, 'state-' + sid), path.join(DIR, 'state'), path.join(LEGACY_DIR, 'state')]
+    : [path.join(DIR, 'state'), path.join(LEGACY_DIR, 'state')];
+  for (const f of cands) {
+    try {
+      const s = JSON.parse(fs.readFileSync(f, 'utf8'));
+      if (s && typeof s.label === 'string') return s;
+    } catch { /* next candidate */ }
+  }
   return { label: 'Idle', icon: '.', color: '#0f1923' };
 }
 
@@ -54,18 +77,35 @@ function readFlags() {
 }
 const flagOn = (f, k) => (f[k] ? f[k] === 'on' : true);
 
-const TURN_START_FILE = path.join(DIR, 'turn-start');
-// Human duration since the turn started (file written by the hook on prompt).
-function turnDuration() {
-  try {
-    const ts = parseInt(fs.readFileSync(TURN_START_FILE, 'utf8'), 10);
-    if (!Number.isFinite(ts)) return null;
-    let s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-    if (s < 60) return s + 's';
-    if (s < 3600) return Math.floor(s / 60) + 'm' + (s % 60) + 's';
-    return Math.floor(s / 3600) + 'h' + Math.floor((s % 3600) / 60) + 'm';
-  } catch { return null; }
+// Live duration since the turn started (stamp written by the hook on prompt).
+function turnDuration(sid) {
+  const cands = sid
+    ? [path.join(DIR, 'turn-start-' + sid)]
+    : [path.join(DIR, 'turn-start'), path.join(LEGACY_DIR, 'turn-start')];
+  for (const f of cands) {
+    try {
+      const ts = parseInt(fs.readFileSync(f, 'utf8'), 10);
+      if (!Number.isFinite(ts)) continue;
+      let s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (s < 60) return s + 's';
+      if (s < 3600) return Math.floor(s / 60) + 'm' + (s % 60) + 's';
+      return Math.floor(s / 3600) + 'h' + Math.floor((s % 3600) / 60) + 'm';
+    } catch { /* next */ }
+  }
+  return null;
 }
+
+// ---- color emission ------------------------------------------
+// 24-bit where the terminal advertises it; otherwise the nearest cell of the
+// 256-color cube, which GNU screen, Terminal.app and the linux console handle.
+const TRUECOLOR = /truecolor|24bit/i.test(process.env.COLORTERM || '') ||
+                  /-direct/.test(process.env.TERM || '');
+function to256([r, g, b]) {
+  const f = (v) => Math.round(v / 255 * 5);
+  return 16 + 36 * f(r) + 6 * f(g) + f(b);
+}
+const bgSeq = (rgb) => TRUECOLOR ? `48;2;${rgb[0]};${rgb[1]};${rgb[2]}` : `48;5;${to256(rgb)}`;
+const fgSeqRGB = (rgb) => TRUECOLOR ? `38;2;${rgb[0]};${rgb[1]};${rgb[2]}` : `38;5;${to256(rgb)}`;
 
 // Context-window gauge: a 7-cell bar. barString() is plain (for the full bar);
 // contextGauge() colours it green/amber/red by fill.
@@ -73,11 +113,13 @@ function barString(pct) {
   const cells = 7, filled = Math.max(0, Math.min(cells, Math.round(pct / 100 * cells)));
   return '▓'.repeat(filled) + '░'.repeat(cells - filled);
 }
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
 function contextGauge(pct, exceeds) {
   const p = Math.max(0, Math.min(100, Math.round(pct)));
   const hex = (p >= 90 || exceeds) ? '#e04040' : p >= 70 ? '#e0a020' : '#3ad27a';
-  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-  return `\x1b[38;2;${r};${g};${b}m\x1b[1m${barString(p)} ${p}%\x1b[0m`;
+  return `\x1b[${fgSeqRGB(hexToRgb(hex))}m\x1b[1m${barString(p)} ${p}%\x1b[0m`;
 }
 
 // Brighten a dark theme color so it reads as a small badge, preserving hue.
@@ -113,6 +155,7 @@ const MODES = {
   bypassPermissions: { label: 'BYPASS',    color: '#c01818' },
 };
 const APPROVAL_COLOR = '#ff8c00'; // amber — "auto on, but this needs you"
+const APPROVAL_LABEL = 'NEEDS OK';
 const SUBAGENT_COLOR = '#c83ab0'; // magenta — N subagents currently running
 const EFFORT = { low: 'LOW', medium: 'MED', high: 'HIGH', xhigh: 'XHIGH', max: 'MAX' };
 const EFFORT_COLOR = '#5a6cf0'; // indigo — reasoning effort level
@@ -121,27 +164,32 @@ const EFFORT_COLOR = '#5a6cf0'; // indigo — reasoning effort level
 // hook just wrote a fresh permission mode. It is hidden when idle/done: a mode
 // toggle while idle reaches neither the statusline JSON nor any hook, so an
 // idle value could be stale — better to show nothing than something wrong.
-const ACTIVE_KEYS = new Set(['thinking', 'shell', 'editing', 'reading', 'subagent', 'tool']);
+const ACTIVE_KEYS = new Set([
+  'thinking', 'shell', 'editing', 'reading', 'subagent', 'tool',
+  'web', 'planning', 'skill', 'mcp', 'compacting',
+]);
 
 // A small colored chip with contrast-aware, always-crisp text.
 function chip(text, hex) {
-  const [r, g, b] = brighten(hex);
-  return `\x1b[48;2;${r};${g};${b}m\x1b[${fgCode([r, g, b])}m\x1b[1m ${text} \x1b[0m`;
+  const rgb = brighten(hex);
+  return `\x1b[${bgSeq(rgb)}m\x1b[${fgCode(rgb)}m\x1b[1m ${text} \x1b[0m`;
 }
 
-function termWidth(sess) {
-  const w = sess.width || sess.cols || (sess.terminal && sess.terminal.width) ||
-            parseInt(process.env.COLUMNS || '', 10);
+// Claude Code injects COLUMNS into the statusline process from the live TTY
+// width (documented); the stdin JSON has no width field.
+function termWidth() {
+  const w = parseInt(process.env.COLUMNS || '', 10);
   return Number.isFinite(w) && w > 20 ? w : 80;
 }
 
 function main() {
-  const st = readState();
   const sess = readSession();
+  const sid = sanitizeSid(sess.session_id);
+  const st = readState(sid);
   const style = readStyle();
-  const [r, g, b] = brighten(st.color);
-  const fg = fgCode([r, g, b]);
-  const onColor = (text) => `\x1b[48;2;${r};${g};${b}m\x1b[${fg}m\x1b[1m${text}\x1b[0m`;
+  const rgb = brighten(st.color);
+  const fg = fgCode(rgb);
+  const onColor = (text) => `\x1b[${bgSeq(rgb)}m\x1b[${fg}m\x1b[1m${text}\x1b[0m`;
   // Readable mid-grey for the secondary tail; raw ANSI dim renders too faint on some terminals.
   const dim = (text) => `\x1b[38;5;250m${text}\x1b[0m`;
 
@@ -158,41 +206,55 @@ function main() {
   const mode = (typeof sess.permission_mode === 'string' && sess.permission_mode) || st.mode || 'default';
   const modeInfo = ACTIVE_KEYS.has(st.key) ? MODES[mode] : null;
 
-  // Reasoning effort (effort.level), context-window gauge, turn duration.
+  // What exactly is happening ("npm test", "badge.js", …) — written by the
+  // hook from tool_input, gated there by FEATURE_DETAIL.
+  const detail = typeof st.detail === 'string' ? st.detail : '';
+
+  // Reasoning effort (effort.level), context gauge, duration, session cost.
   const effLevel = sess.effort && typeof sess.effort.level === 'string' ? sess.effort.level : '';
-  const effLabel = flagOn(flags, 'FEATURE_EFFORT') ? EFFORT[effLevel] : null;
+  const effLabel = flagOn(flags, 'FEATURE_EFFORT') && effLevel
+    ? (EFFORT[effLevel] || effLevel.toUpperCase().slice(0, 6)) : null;
   const cw = sess.context_window || {};
   let pct = typeof cw.used_percentage === 'number' ? cw.used_percentage : null;
   if (pct == null && typeof cw.current_usage === 'number' && cw.context_window_size > 0) {
     pct = cw.current_usage / cw.context_window_size * 100; // fallback if used_percentage is absent
   }
   const showGauge = flagOn(flags, 'FEATURE_CONTEXT') && pct != null;
-  const dur = flagOn(flags, 'FEATURE_DURATION') ? turnDuration() : null;
+  // While running: live ticking duration. On DONE: the final duration of the
+  // last turn, persisted into the state by the hook.
+  const dur = flagOn(flags, 'FEATURE_DURATION')
+    ? (turnDuration(sid) || (st.key === 'done' && typeof st.duration === 'string' ? st.duration : null))
+    : null;
+  const costUsd = sess.cost && typeof sess.cost.total_cost_usd === 'number' ? sess.cost.total_cost_usd : null;
+  const cost = flagOn(flags, 'FEATURE_COST') && costUsd != null && costUsd >= 0.005
+    ? '$' + costUsd.toFixed(2) : '';
 
   // Coloured chips for compact/wide; plain bracketed text for the full bar
   // (a single-colour bar can't show separate chip backgrounds).
   let chips = '', inlineChips = '';
   if (modeInfo) { chips += '  ' + chip(modeInfo.label, modeInfo.color); inlineChips += `  [ ${modeInfo.label} ]`; }
-  if (st.needsApproval) { chips += '  ' + chip('WARTET AUF OK', APPROVAL_COLOR); inlineChips += '  [ WARTET AUF OK ]'; }
-  const agents = subagentCount(); // independent of activity — shown whenever subagents run
+  if (st.needsApproval) { chips += '  ' + chip(APPROVAL_LABEL, APPROVAL_COLOR); inlineChips += `  [ ${APPROVAL_LABEL} ]`; }
+  const agents = flagOn(flags, 'FEATURE_SUBAGENTS') ? subagentCount(sid) : 0; // shown whenever subagents run
   if (agents > 0) { chips += '  ' + chip(`⚙ ${agents}`, SUBAGENT_COLOR); inlineChips += `  [ ⚙ ${agents} ]`; }
   if (effLabel) { chips += '  ' + chip(effLabel, EFFORT_COLOR); inlineChips += `  [ ${effLabel} ]`; }
 
-  // Tail: context gauge (coloured) then the grey duration · model · dir.
+  // Tail: context gauge (coloured) then the grey duration · cost · model · dir.
   const gaugeWide = showGauge ? '  ' + contextGauge(pct, sess.exceeds_200k_tokens) : '';
   const gaugeInline = showGauge ? `  ${barString(Math.round(pct))} ${Math.round(pct)}%` : '';
-  const greyTail = [dur ? `⏱ ${dur}` : '', model, dir].filter(Boolean).join(' · ');
+  const greyTail = [dur ? `⏱ ${dur}` : '', cost, model, dir].filter(Boolean).join(' · ');
+  const detailWide = detail ? '  ' + dim(detail) : '';
 
   let out;
   if (style === 'compact') {
-    out = onColor(` ${st.icon} ${label} `) + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
+    out = onColor(` ${st.icon} ${label} `) + detailWide + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
   } else if (style === 'full') {
-    let inner = ` ${st.icon} ${label}` + inlineChips + gaugeInline + (greyTail ? `  ·  ${greyTail} ` : ' ');
-    const w = termWidth(sess);
+    let inner = ` ${st.icon} ${label}` + (detail ? ` ${detail}` : '') + inlineChips + gaugeInline +
+      (greyTail ? `  ·  ${greyTail} ` : ' ');
+    const w = termWidth();
     if (inner.length < w) inner += ' '.repeat(w - inner.length);
     out = onColor(inner);
   } else { // wide (default)
-    out = onColor(`    ${st.icon}  ${label}    `) + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
+    out = onColor(`    ${st.icon}  ${label}    `) + detailWide + chips + gaugeWide + (greyTail ? '  ' + dim(greyTail) : '');
   }
   process.stdout.write(out);
 }
