@@ -68,6 +68,7 @@ startup** — no manual command, no guessing whether you're on the latest versio
 followed by reinstalling — which is exactly what auto-update saves you from.)
 
 ## States
+:)
 
 The badge color and label reflect what Claude is doing:
 
