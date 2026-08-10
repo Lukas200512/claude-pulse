@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.0-alpha.1 — 2026-06-10
+## 2.4.0-alpha.1 : 2026-06-10
 
 Large robustness + feature release; every fix below was found and verified by
 an adversarial multi-agent review.
